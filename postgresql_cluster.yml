@@ -1,0 +1,4 @@
+---
+- import_playbook: sys_selinux_enforce.yml
+- import_playbook: postgresql_install.yml
+- import_playbook: postgresql_replication_config.yml

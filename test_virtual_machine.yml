@@ -1,0 +1,38 @@
+---
+- name: test virtual machine
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: gathering os-release info
+      ansible.builtin.command:
+        cmd: cat /etc/centos-release
+      changed_when: false
+      register: result
+
+    - name: print os-release info
+      ansible.builtin.debug:
+        var: result.stdout
+
+  post_tasks:
+    - name: verify hostname '{{ inventory_hostname }}'
+      ansible.builtin.command:
+        cmd: hostname
+      changed_when: false
+      register: result
+      failed_when: inventory_hostname != result.stdout
+
+    - name: verify locale 'en_US.UTF-8'
+      ansible.builtin.command:
+        cmd: locale
+      changed_when: false
+      register: result
+      failed_when: "'LANG=en_US.UTF-8' not in result.stdout"
+
+    - name: verify timedate 'Asia/Tokyo'
+      ansible.builtin.command:
+        cmd: timedatectl
+      changed_when: false
+      register: result
+      failed_when: "'Time zone: Asia/Tokyo' not in result.stdout"

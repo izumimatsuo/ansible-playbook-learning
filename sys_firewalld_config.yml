@@ -1,0 +1,42 @@
+---
+- name: firewalld configration
+  hosts: all
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: install firewalld package
+      ansible.builtin.yum:
+        name: firewalld
+
+    - name: start firewalld service
+      ansible.builtin.service:
+        name: firewalld.service
+        state: started
+        enabled: true
+
+  tasks:
+    - name: add services
+      ansible.posix.firewalld:
+        zone: public
+        service: "{{ item }}"
+        permanent: true
+        state: enabled
+      loop:
+        - http
+        - https
+      notify: restart firewalld service
+
+  post_tasks:
+    - name: verify enabled services
+      ansible.builtin.command:
+        cmd: "firewall-cmd --list-services --zone=public --permanent"
+      changed_when: false
+      register: result
+      failed_when: "'http' not in result.stdout or 'https' not in result.stdout"
+
+  handlers:
+    - name: restart firewalld service
+      ansible.builtin.service:
+        name: firewalld.service
+        state: restarted

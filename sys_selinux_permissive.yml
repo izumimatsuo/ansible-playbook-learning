@@ -1,0 +1,5 @@
+---
+- name: selinux configuration
+  import_playbook: sec_selinux_enforce.yml
+  vars:
+    selinux_enforcing: false

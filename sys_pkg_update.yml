@@ -1,0 +1,24 @@
+---
+- name: system update
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: update all packages  # noqa package-latest
+      ansible.builtin.yum:
+        name: "*"
+        state: latest
+      notify: reboot server
+
+  post_tasks:
+    - name: verify package update  # noqa command-instead-of-module
+      ansible.builtin.command:
+        cmd: yum check-update
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+  handlers:
+    - name: reboot server
+      ansible.builtin.reboot:

@@ -1,0 +1,146 @@
+---
+- name: nginx configuration
+  hosts: all
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: create self-signed certificate
+      ansible.builtin.command:
+        cmd: openssl req -x509 -sha256 -nodes -days 90 -newkey rsa:2048 -subj /CN=192.168.56.11 -keyout server.key -out server.crt
+        chdir: /etc/nginx/conf.d
+        creates: /etc/nginx/conf.d/server.*
+
+    - name: install selinux packages
+      ansible.builtin.yum:
+        name:
+          - libselinux-python
+
+  tasks:
+    - name: set server-token off (hidde version)
+      ansible.builtin.lineinfile:
+        path: /etc/nginx/nginx.conf
+        insertafter: "^\\s+default_type"
+        line: "    server_tokens off;"
+        backup: true
+        validate: "/usr/sbin/nginx -t -c %s"
+      notify: restart nginx service
+
+    - name: deploy virtual-server conf
+      ansible.builtin.copy:
+        backup: true
+        dest: /etc/nginx/conf.d/default.conf
+        content: |
+          server {
+              listen       80 default_server;
+              server_name  localhost;
+
+              return 301 https://$host$request_uri;
+          }
+
+          server {
+              listen       443 ssl;
+              server_name  localhost;
+
+              ssl_certificate     /etc/nginx/conf.d/server.crt;
+              ssl_certificate_key /etc/nginx/conf.d/server.key;
+
+              add_header X-Frame-Options SAMEORIGIN;
+              add_header X-XSS-Protection "1; mode=block";
+              add_header X-Content-Type-Options nosniff;
+              add_header Strict-Transport-Security 'max-age=31536000; includeSubDomains; preload';
+              etag off;
+
+              location / {
+                  root   /usr/share/nginx/html;
+                  index  index.html index.htm;
+              }
+
+              location /guacamole/ {
+                  proxy_pass http://localhost:8080;
+                  proxy_buffering off;
+                  proxy_http_version 1.1;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection $http_connection;
+                  access_log off;
+              }
+
+              error_page   500 502 503 504  /50x.html;
+              location = /50x.html {
+                  root   /usr/share/nginx/html;
+              }
+          }
+        mode: "0644"
+      notify: restart nginx service
+
+    - name: verify nginx config
+      ansible.builtin.command:
+        cmd: /usr/sbin/nginx -t
+      changed_when: false
+
+    - name: set selinux boolean
+      ansible.posix.seboolean:
+        name: "{{ item }}"
+        state: true
+        persistent: true
+      loop:
+        - httpd_can_network_connect
+
+  post_tasks:
+    - name: verify certificate exists
+      ansible.builtin.wait_for:
+        path: "{{ item }}"
+        state: present
+        timeout: 5
+      loop:
+        - /etc/nginx/conf.d/server.crt
+        - /etc/nginx/conf.d/server.key
+
+    - name: verify opened ssl port
+      ansible.builtin.wait_for:
+        port: 443
+        state: started
+        timeout: 5
+
+    - name: access to http localhost
+      ansible.builtin.uri:
+        url: http://localhost
+        return_content: true
+        validate_certs: false
+      register: result
+
+    - name: verify http secure settings
+      ansible.builtin.assert:
+        that:
+          - "'nginx' == result.server"
+          - "'SAMEORIGIN' == result.x_frame_options"
+          - "'1; mode=block' == result.x_xss_protection"
+          - "'nosniff' == result.x_content_type_options"
+          - "'max-age=31536000; includeSubDomains; preload' == result.strict_transport_security"
+          - "result.etag is undefined"
+
+    - name: verify nginx location
+      ansible.builtin.wait_for:
+        path: /etc/nginx/conf.d/default.conf
+        search_regex: "{{ item }}"
+        state: present
+        timeout: 5
+      loop:
+        - location /
+        - location /guacamole/
+
+    - name: verify selinux boolean
+      ansible.builtin.command:
+        cmd: "getsebool {{ item }}"
+      changed_when: false
+      register: result
+      failed_when: "'off' in result.stdout"
+      loop:
+        - httpd_can_network_connect
+
+  handlers:
+    - name: restart nginx service
+      ansible.builtin.service:
+        name: nginx.service
+        state: restarted

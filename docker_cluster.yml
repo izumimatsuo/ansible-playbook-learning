@@ -1,0 +1,4 @@
+---
+- import_playbook: sys_selinux_enforce.yml
+- import_playbook: docker_install.yml
+- import_playbook: docker_swarm_config.yml

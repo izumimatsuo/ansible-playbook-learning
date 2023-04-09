@@ -1,0 +1,63 @@
+---
+- name: docker-ce setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: uninstall old versions
+      ansible.builtin.yum:
+        name:
+          - docker
+          - docker-client
+          - docker-client-latest
+          - docker-common
+          - docker-latest
+          - docker-latest-logrotate
+          - docker-logrotate
+          - docker-engine
+        state: removed
+
+  tasks:
+    - name: add docker-ce repository
+      ansible.builtin.yum_repository:
+        name: docker-ce-stable
+        description: docker-ce stable repo
+        baseurl: https://download.docker.com/linux/centos/$releasever/$basearch/stable
+        gpgkey: https://download.docker.com/linux/centos/gpg
+        gpgcheck: true
+
+    - name: install docker-ce packages
+      ansible.builtin.yum:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+
+    - name: start docker-ce service
+      ansible.builtin.service:
+        name: docker.service
+        state: started
+        enabled: true
+
+  post_tasks:
+    - name: verify installed docker-ce package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep docker-ce\\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify started docker-ce service
+      ansible.builtin.service:
+        name: docker.service
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed

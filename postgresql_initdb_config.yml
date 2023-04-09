@@ -1,0 +1,106 @@
+---
+- name: postgresql db configurarion
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    pgsql_version: "15"
+    pgsql_db: "guacamole_db"
+    pgsql_user: "guacamole_user"
+    pgsql_password: "guacamole_pass"
+    pgsql_initdb_script: "/tmp/initdb.sql"
+
+  pre_tasks:
+    - name: install postgresql python package
+      ansible.builtin.yum:
+        name: python2-psycopg2
+
+  tasks:
+    - name: change listen addresses (postgresql.conf)
+      ansible.builtin.lineinfile:
+        path: "/var/lib/pgsql/{{ pgsql_version }}/data/postgresql.conf"
+        backup: true
+        regexp: "^listen_addresses"
+        line: "listen_addresses = '*'"
+      notify: restart postgresql service
+
+    - name: add authentication (pg_hba.conf)
+      ansible.builtin.lineinfile:
+        path: "/var/lib/pgsql/{{ pgsql_version }}/data/pg_hba.conf"
+        backup: true
+        regexp: "^host {{ pgsql_db }} {{ pgsql_user }} all md5"
+        line: "host {{ pgsql_db }} {{ pgsql_user }} all md5"
+      notify: restart postgresql service
+
+    - name: create database
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: "{{ pgsql_db }}"
+        encoding: UTF-8
+      register: create_db
+
+    - name: create role
+      become_user: postgres
+      community.postgresql.postgresql_user:
+        user: "{{ pgsql_user }}"
+        password: "{{ pgsql_password }}"
+
+    - name: grant all
+      become_user: postgres
+      community.postgresql.postgresql_privs:
+        db: "{{ pgsql_db }}"
+        role: "{{ pgsql_user }}"
+        objs: ALL_DEFAULT
+        priv: ALL
+        type: default_privs
+
+    - name: execute initdb sql
+      when: create_db.changed and pgsql_initdb_script != None
+      become_user: postgres
+      ansible.builtin.command:
+        cmd: "psql -d {{ pgsql_db }} -f {{ pgsql_initdb_script }}"
+        removes: "{{ pgsql_initdb_script }}"
+
+  post_tasks:
+    - name: verify postgresql config
+      ansible.builtin.wait_for:
+        path: "/var/lib/pgsql/{{ pgsql_version }}/data/postgresql.conf"
+        search_regex: "^{{ item }}$"
+        state: present
+        timeout: 5
+      loop:
+        - listen_addresses = '\*'
+
+    - name: verify postgresql hba config
+      ansible.builtin.wait_for:
+        path: "/var/lib/pgsql/{{ pgsql_version }}/data/pg_hba.conf"
+        search_regex: "^{{ item }}$"
+        state: present
+        timeout: 5
+      loop:
+        - "host {{ pgsql_db }} {{ pgsql_user }} all md5"
+
+    - name: verify created database
+      when: pgsql_db != None
+      become_user: postgres
+      ansible.builtin.command:
+        cmd: psql -l
+      changed_when: false
+      register: result
+      failed_when: pgsql_db not in result.stdout
+
+    - name: verify created role
+      when: pgsql_user != None and pgsql_password != None
+      become_user: postgres
+      ansible.builtin.command:
+        cmd: psql -c "\du"
+      changed_when: false
+      register: result
+      failed_when: pgsql_user not in result.stdout
+
+  handlers:
+    - name: restart postgresql service
+      ansible.builtin.service:
+        name: "postgresql-{{ pgsql_version }}.service"
+        state: restarted

@@ -1,0 +1,29 @@
+---
+  #
+  # Basic setting
+  #
+- import_playbook: sys_selinux_enforce.yml
+- import_playbook: sys_firewalld_config.yml
+
+  #
+  # Web tier
+  #
+- import_playbook: nginx_install.yml
+- import_playbook: nginx_vserver_config.yml
+
+  #
+  # Application tier
+  #
+- import_playbook: docker_install.yml
+- import_playbook: docker_container_config.yml
+
+  #
+  # Database tier
+  #
+- import_playbook: postgresql_install.yml
+- import_playbook: postgresql_initdb_config.yml
+
+  #
+  # Integration test
+  #
+- import_playbook: test_webapp_site.yml

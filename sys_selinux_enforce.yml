@@ -1,0 +1,38 @@
+---
+- name: selinux configuration
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    selinux_enforcing: true
+
+  pre_tasks:
+    - name: install selinux packages
+      ansible.builtin.yum:
+        name:
+          - libselinux-python
+          - setroubleshoot-server
+
+  tasks:
+    - name: set selinux state as fact
+      ansible.builtin.set_fact:
+        selinux_state: "{{ 'enforcing' if selinux_enforcing else 'permissive' }}"
+
+    - name: set selinux state to '{{ selinux_state }}'
+      ansible.posix.selinux:
+        state: "{{ selinux_state }}"
+        policy: targeted
+      notify: reboot server
+
+  post_tasks:
+    - name: verify selinux enforce
+      ansible.builtin.command:
+        cmd: getenforce
+      changed_when: false
+      register: result
+      failed_when: selinux_state != result.stdout|lower
+
+  handlers:
+    - name: reboot server
+      ansible.builtin.reboot:

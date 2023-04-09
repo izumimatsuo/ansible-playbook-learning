@@ -1,0 +1,10 @@
+!.gitignore
+/.vagrant/
+/.venv/
+
+# Created by https://www.gitignore.io/api/ansible,testinfra
+
+### Ansible ###
+*.retry
+
+# End of https://www.gitignore.io/api/ansible,testinfra

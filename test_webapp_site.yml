@@ -1,0 +1,83 @@
+---
+- name: test webapp server
+  hosts: all
+  gather_facts: false
+
+  vars:
+    test_target: "192.168.56.11"
+
+  tasks:
+    - name: verify access to web (http) port '80'
+      ansible.builtin.wait_for:
+        port: 80
+        state: started
+        timeout: 5
+
+    - name: verify access to web (https) port '443'
+      ansible.builtin.wait_for:
+        port: 443
+        state: started
+        timeout: 5
+
+    - name: verify access to app (guacamole) port '8080'
+      ansible.builtin.wait_for:
+        port: 8080
+        state: started
+        timeout: 5
+
+    - name: verify access to db (postgresql) port '5432'
+      ansible.builtin.wait_for:
+        port: 5432
+        state: started
+        timeout: 5
+
+    - name: verify not access to external -> app (guacamole) port '8080'
+      delegate_to: localhost
+      ansible.builtin.wait_for:
+        host: "{{ test_target }}"
+        port: 8080
+        state: stopped
+        timeout: 5
+
+    - name: verify not access to external -> db (postgresql) port '5432'
+      delegate_to: localhost
+      ansible.builtin.wait_for:
+        host: "{{ test_target }}"
+        port: 5432
+        state: stopped
+        timeout: 5
+
+    - name: verify access to uri 'http://{{ test_target }}'
+      delegate_to: localhost
+      ansible.builtin.uri:
+        url: "http://{{ test_target }}"
+        return_content: true
+        status_code: 200
+        validate_certs: false
+      register: result
+      failed_when: "'Welcome to nginx' not in result.content"
+
+    - name: verify access to uri 'https://{{ test_target }}'
+      delegate_to: localhost
+      ansible.builtin.uri:
+        url: "https://{{ test_target }}"
+        return_content: true
+        status_code: 200
+        validate_certs: false
+      register: result
+      failed_when: "'Welcome to nginx' not in result.content"
+
+    - name: verify access to uri 'https://{{ test_target }}/guacamole'
+      delegate_to: localhost
+      ansible.builtin.uri:
+        url: "https://{{ test_target }}/guacamole"
+        return_content: true
+        status_code: 200
+        validate_certs: false
+
+    - name: verify not access (404) to uri 'https://{{ test_target }}/not_found'
+      delegate_to: localhost
+      ansible.builtin.uri:
+        url: "https://{{ test_target }}/not_faound"
+        status_code: 404
+        validate_certs: false

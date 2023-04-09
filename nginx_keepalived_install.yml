@@ -1,0 +1,112 @@
+---
+- name: nginx cluster configuration
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    nginx_cluster:
+      virtual_ipaddr: "192.168.56.10"
+      interface: "eth1"
+
+  pre_tasks:
+    - name: install selinux packages
+      ansible.builtin.yum:
+        name:
+          - libselinux-python
+
+  tasks:
+    - name: install keepalived package
+      ansible.builtin.yum:
+        name: keepalived
+
+    - name: start keepalived service
+      ansible.builtin.service:
+        name: keepalived.service
+        state: started
+        enabled: true
+
+    - name: copy keepalived conf
+      ansible.builtin.copy:
+        dest: /etc/keepalived/keepalived.conf
+        content: |
+          ! Configuration File for keepalived
+
+          global_defs {
+          }
+
+          vrrp_script check_process {
+            script "/usr/bin/systemctl is-active nginx.service"
+            interval 3
+          }
+
+          vrrp_instance VI_1 {
+            state BACKUP
+            interface {{ nginx_cluster.interface }}
+            virtual_router_id 51
+            priority 100
+            advert_int 1
+            virtual_ipaddress {
+              {{ nginx_cluster.virtual_ipaddr }}
+            }
+            track_script {
+              check_process
+            }
+          }
+        mode: 0644
+      notify: restart keepalived service
+
+    - name: change selinux domain to permissive
+      community.general.selinux_permissive:
+        name: "{{ item }}"
+        permissive: true
+      loop:
+        - keepalived_t
+      notify: restart keepalived service
+
+  post_tasks:
+    - name: verify installed keepalived package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep keepalived\\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify started keepalived
+      ansible.builtin.service:
+        name: keepalived.service
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
+
+    - name: verify vrrp state
+      ansible.builtin.shell:
+        cmd: journalctl -u keepalived | grep STATE | tail -n 1
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print vrrp state
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify selinux permissive domain
+      ansible.builtin.shell:
+        cmd: set -o pipefail; semanage permissive -l -n | grep {{ item }}
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+      loop:
+        - keepalived_t
+
+  handlers:
+    - name: restart keepalived service
+      ansible.builtin.service:
+        name: keepalived.service
+        state: restarted

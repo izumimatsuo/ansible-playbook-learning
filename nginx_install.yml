@@ -1,0 +1,61 @@
+---
+- name: nginx setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: add nginx repository
+      ansible.builtin.yum_repository:
+        name: nginx-stable
+        description: nginx stable repo
+        baseurl: http://nginx.org/packages/centos/$releasever/$basearch/
+        gpgkey: https://nginx.org/keys/nginx_signing.key
+        gpgcheck: true
+        module_hotfixes: true
+
+    - name: install nginx package
+      ansible.builtin.yum:
+        name: nginx
+
+    - name: edit index page
+      ansible.builtin.lineinfile:
+        path: /usr/share/nginx/html/index.html
+        regexp: "^(.*Welcome to nginx!)(</h1>.*)$"
+        line: '\1 - {{ inventory_hostname }}\2'
+        backup: true
+        backrefs: true
+
+    - name: start nginx service
+      ansible.builtin.service:
+        name: nginx.service
+        state: started
+        enabled: true
+
+  post_tasks:
+    - name: verify installed nginx package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep nginx\\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify index-html
+      ansible.builtin.wait_for:
+        path: /usr/share/nginx/html/index.html
+        search_regex: "Welcome to nginx! - {{ inventory_hostname }}"
+        state: present
+        timeout: 5
+
+    - name: verify started nginx
+      ansible.builtin.service:
+        name: nginx.service
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
