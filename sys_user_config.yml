@@ -1,0 +1,20 @@
+---
+- name: root user protection
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: change shell to '/sbin/nologn'
+      ansible.builtin.user:
+        name: root
+        shell: /sbin/nologin
+
+  post_tasks:
+    - name: verify shell '/sbin/nologin'
+      ansible.builtin.command:
+        cmd: getent passwd root
+      changed_when: false
+      register: result
+      failed_when: "not '/sbin/nologin' in result.stdout"
+

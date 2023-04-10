@@ -3,6 +3,7 @@
   # Basic setting
   #
 - import_playbook: sys_selinux_enforce.yml
+- import_playbook: sys_user_config.yml
 - import_playbook: sys_sshd_config.yml
 - import_playbook: sys_firewalld_config.yml
 
