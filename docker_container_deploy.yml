@@ -1,0 +1,58 @@
+---
+- name: guacamole application setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: install docker python package
+      ansible.builtin.yum:
+        name: python-docker-py
+
+  tasks:
+    - name: start guacd container
+      community.docker.docker_container:
+        name: some-guacd
+        image: guacamole/guacd
+        restart_policy: always
+
+    - name: start guacamole container
+      community.docker.docker_container:
+        name: some-guacamole
+        image: guacamole/guacamole
+        restart_policy: always
+        env:
+          POSTGRES_DATABASE: "guacamole_db"
+          POSTGRES_USER: "guacamole_user"
+          POSTGRES_PASSWORD: "guacamole_pass"
+          POSTGRES_HOSTNAME: "192.168.56.11"
+        ports:
+          - "127.0.0.1:8080:8080"
+        links:
+          - "some-guacd:guacd"
+
+    - name: generate initdb sql
+      ansible.builtin.shell:
+        cmd: docker run --rm guacamole/guacamole /opt/guacamole/bin/initdb.sh --postgres > /tmp/initdb.sql
+        creates: /tmp/initdb.sql
+
+  post_tasks:
+    - name: verify started guacd contailner
+      ansible.builtin.command:
+        cmd: docker container ls
+      changed_when: false
+      register: result
+      failed_when: "'guacamole/guacd' not in result.stdout"
+
+    - name: verify started guacamole contailner
+      ansible.builtin.command:
+        cmd: docker container ls
+      changed_when: false
+      register: result
+      failed_when: "'guacamole/guacamole' not in result.stdout"
+
+    - name: verify initdb-sql exist
+      ansible.builtin.wait_for:
+        path: /tmp/initdb.sql
+        state: present
+        timeout: 5
