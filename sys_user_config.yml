@@ -5,7 +5,7 @@
   gather_facts: false
 
   tasks:
-    - name: change shell to '/sbin/nologn'
+    - name: change shell to '/sbin/nologin'
       ansible.builtin.user:
         name: root
         shell: /sbin/nologin
