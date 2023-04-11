@@ -5,19 +5,19 @@
   gather_facts: false
 
   vars:
-    login_shell: "/sbin/nologin"
+    user_shell: "/sbin/nologin"
 
   tasks:
-    - name: change shell to '{{ login_shell }}'
+    - name: change shell to '{{ user_shell }}'
       ansible.builtin.user:
         name: root
-        shell: "{{ login_shell }}"
+        shell: "{{ user_shell }}"
 
   post_tasks:
-    - name: verify shell '{{ login_shell }}'
+    - name: verify shell '{{ user_shell }}'
       ansible.builtin.command:
         cmd: getent passwd root
       changed_when: false
       register: result
-      failed_when: not login_shell in result.stdout
+      failed_when: not user_shell in result.stdout
 
