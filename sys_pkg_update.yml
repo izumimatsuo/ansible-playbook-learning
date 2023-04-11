@@ -12,6 +12,16 @@
       notify: reboot server
 
   post_tasks:
+    - name: gathering os-release info
+      ansible.builtin.command:
+        cmd: cat /etc/centos-release
+      changed_when: false
+      register: result
+
+    - name: print os-release info
+      ansible.builtin.debug:
+        var: result.stdout
+
     - name: verify package update  # noqa command-instead-of-module
       ansible.builtin.command:
         cmd: yum check-update
