@@ -4,6 +4,11 @@
   become: true
   gather_facts: false
 
+  vars:
+    firewalld_services:
+      - http
+      - https
+
   pre_tasks:
     - name: install firewalld package
       ansible.builtin.yum:
@@ -22,9 +27,7 @@
         service: "{{ item }}"
         permanent: true
         state: enabled
-      loop:
-        - http
-        - https
+      loop: "{{ firewalld_services }}"
       notify: restart firewalld service
 
   post_tasks:
@@ -33,7 +36,14 @@
         cmd: "firewall-cmd --list-services --zone=public --permanent"
       changed_when: false
       register: result
-      failed_when: "'http' not in result.stdout or 'https' not in result.stdout"
+
+    - fail:
+      when: item not in result.stdout
+      loop: "{{ firewalld_services }}"
+
+    - name: print services
+      ansible.builtin.debug:
+        var: result.stdout
 
   handlers:
     - name: restart firewalld service
