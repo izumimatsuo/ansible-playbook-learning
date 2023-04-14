@@ -1,0 +1,85 @@
+---
+- name: rkhunter
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: install epel repository
+      ansible.builtin.yum:
+        name: epel-release
+
+    - name: install rkhunter packages
+      ansible.builtin.yum:
+        name:
+          - rkhunter
+          - unhide
+          - file
+
+    - name: set rkhunter config
+      ansible.builtin.lineinfile:
+        path: /etc/rkhunter.conf
+        regexp: '^{{ item }}'
+        line: '#{{ item }}'
+        backup: yes
+      loop:
+        - SCRIPTWHITELIST=/sbin/ifup
+        - SCRIPTWHITELIST=/sbin/ifdown
+
+    - name: set rkhunter exclude check kernel modules directory '/lib/modules'
+      ansible.builtin.lineinfile:
+        path: /etc/rkhunter.conf
+        regexp: '^(DISABLE_TESTS=suspscan hidden_ports deleted_files packet_cap_apps apps ipc_shared_mem)$'
+        line: '\1 avail_modules'
+        backrefs: yes
+        backup: yes
+
+    - name: check sshd
+      ansible.builtin.command:
+        cmd: grep '^PermitRootLogin' /etc/ssh/sshd_config
+      changed_when: false
+      failed_when: false
+      register: ssh_root_user
+
+    - name: set ssh permit-root-login
+      ansible.builtin.lineinfile:
+        path: /etc/rkhunter.conf
+        regexp: "^ALLOW_SSH_ROOT_USER"
+        line: "ALLOW_SSH_ROOT_USER={{ 'unset' if ssh_root_user.rc != 0 else ssh_root_user.stdout.split(' ')[1] }}"
+        backup: yes
+
+    - name: init rkhunter database
+      ansible.builtin.shell:
+        cmd: rkhunter --update; rkhunter --propupd
+        creates: /var/lib/rkhunter/db/rkhunter.dat
+
+  post_tasks:
+    - name: verify installed rkhunter package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep rkhunter\\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify rkhunter config
+      ansible.builtin.wait_for:
+        path: /etc/rkhunter.conf
+        search_regex: "^{{ item }}$"
+        state: present
+        timeout: 5
+      loop:
+        - \#SCRIPTWHITELIST=/sbin/ifup
+        - \#SCRIPTWHITELIST=/sbin/ifdown
+        - DISABLE_TESTS=suspscan hidden_ports deleted_files packet_cap_apps apps ipc_shared_mem avail_modules
+        - ALLOW_SSH_ROOT_USER={{ 'unset' if ssh_root_user.rc != 0 else ssh_root_user.stdout.split(' ')[1] }}
+
+    - name: verify rkhunter check
+      ansible.builtin.command:
+        cmd: rkhunter --check --skip-keypress --report-warnings-only
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0

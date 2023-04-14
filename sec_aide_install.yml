@@ -1,0 +1,79 @@
+---
+- name: aide
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: install aide package
+      ansible.builtin.yum:
+        name: aide
+
+    - name: set aide custom include/exclude path
+      ansible.builtin.blockinfile:
+        dest: /etc/aide.conf
+        content: |
+
+          # ansible
+          !/root/\.ansible.*
+
+    - name: copy cron script
+      ansible.builtin.copy:
+        dest: /etc/cron.daily/aide
+        content: |
+          #!/bin/bash
+
+          MAIL_TO="root"
+          MAIL_SUBJECT="AIDE detected warning"
+          MAIL_TEXT=`mktemp /tmp/temp.XXXXXX`
+
+          aide -C > $MAIL_TEXT
+
+          if [ $? -gt 0 ]; then
+            mail -s "$MAIL_SUBJECT" $MAIL_TO < $MAIL_TEXT
+          fi
+
+          rm -rf $MAIL_TEXT
+        mode: '0755'
+
+    - name: init aide database
+      ansible.builtin.shell:
+        cmd: aide --init; mv /var/lib/aide/aide.db{.new,}.gz
+        creates: /var/lib/aide/aide.db.gz
+
+  post_tasks:
+    - name: verify installed aide package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep aide\\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify aide config
+      ansible.builtin.wait_for:
+        path: /etc/aide.conf
+        search_regex: "^{{ item }}$"
+        state: present
+        timeout: 5
+      loop:
+        - '!/root/\\.ansible.*'
+
+    - name: verify created file exists
+      ansible.builtin.wait_for:
+        path: "{{ item }}"
+        state: present
+        timeout: 5
+      loop:
+        - /etc/cron.daily/aide
+        - /var/lib/aide/aide.db.gz
+
+    - name: verify aide check
+      ansible.builtin.command:
+        cmd: aide --check
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0

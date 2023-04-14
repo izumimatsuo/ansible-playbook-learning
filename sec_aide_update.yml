@@ -1,0 +1,16 @@
+---
+- name: aide --update
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: updating...
+      ansible.builtin.shell:
+        cmd: aide --update; mv /var/lib/aide/aide.db{.new,}.gz
+      changed_when: false
+      register: result
+
+    - name: print update result
+      ansible.builtin.debug:
+        var: result.stdout_lines
