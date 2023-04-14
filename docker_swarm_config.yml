@@ -1,5 +1,5 @@
 ---
-- name: Do docker swarm configuration
+- name: docker swarm configuration
   hosts: all
   become: true
   gather_facts: false
@@ -11,27 +11,27 @@
     docker_swarm_advertise_addr: "eth1"
 
   tasks:
-    - name: Check docker info
+    - name: check docker info
       ansible.builtin.command:
         cmd: docker info
       changed_when: false
       register: docker_info
 
-    - name: Set docker-swarm inactive as fact
+    - name: set docker-swarm inactive as fact
       ansible.builtin.set_fact:
         docker_swarm_inactive: "{{ true if 'Swarm: inactive' in docker_info.stdout else false }}"
 
-    - name: Set docker-swarm manager as fact
+    - name: set docker-swarm manager as fact
       ansible.builtin.set_fact:
         docker_swarm_manager: "{{ true if inventory_hostname in docker_swarm_manager_hosts else false }}"
 
-    - name: Init docker-swarm cluster
+    - name: init docker-swarm cluster
       when: docker_swarm_inactive and docker_swarm_leader_host == inventory_hostname
       ansible.builtin.command:
         cmd: docker swarm init --advertise-addr {{ docker_swarm_advertise_addr }}
 
     - block:
-      - name: Get docker-swarm join-token
+      - name: get docker-swarm join-token
         ansible.builtin.shell:
           cmd: set -o pipefail; docker swarm join-token {{ 'manager' if docker_swarm_manager else 'worker' }} | grep 'docker swarm join'
         register: docker_swarm_join_token
@@ -45,14 +45,14 @@
       when: docker_swarm_inactive and docker_swarm_leader_host != inventory_hostname
 
   post_tasks:
-    - name: Verify docker-swarm is active
+    - name: verify docker-swarm is active
       ansible.builtin.command:
         cmd: docker info
       changed_when: false
       register: result
       failed_when: "'Swarm: active' not in result.stdout"
 
-    - name: Verify docker-swarm-manager
+    - name: verify docker-swarm-manager
       when: docker_swarm_manager
       ansible.builtin.command:
         cmd: docker node ls
@@ -60,7 +60,7 @@
       register: result
       failed_when: result.rc != 0
 
-    - name: Print docker-swarm-nodes
+    - name: print docker-swarm-nodes
       when: inventory_hostname == docker_swarm_leader_host
       ansible.builtin.debug:
         var: result.stdout_lines
