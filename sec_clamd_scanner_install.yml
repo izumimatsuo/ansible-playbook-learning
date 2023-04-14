@@ -1,0 +1,88 @@
+---
+- name: clamd install
+  hosts: all
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: install selinux package
+      ansible.builtin.yum:
+        name:
+          - libsemanage-python
+
+  tasks:
+    - name: install epel repository
+      yum:
+        name: epel-release
+
+    - name: install clamd package
+      yum:
+        name:
+          - clamd
+
+    - name: set clamd scan conf
+      lineinfile:
+        path: /etc/clamd.d/scan.conf
+        regexp: "^({{ item }}.*)$"
+        line: "#\\1"
+        backup: true
+        backrefs: true
+      loop:
+        - User
+
+    - name: set clamd scan conf
+      lineinfile:
+        path: /etc/clamd.d/scan.conf
+        regexp: "^#({{ item }} .*)$"
+        line: "\\1"
+        backup: true
+        backrefs: true
+      loop:
+        - LocalSocket
+        - FixStaleSocket
+
+    - name: start clamd@scan service
+      ansible.builtin.service:
+        name: clamd@scan.service
+        state: started
+        enabled: true
+
+    - name: set selinux boolean
+      ansible.posix.seboolean:
+        name: "{{ item }}"
+        state: true
+        persistent: true
+      loop:
+        - antivirus_can_scan_system
+        - clamd_use_jit
+
+  post_tasks:
+    - name: verify installed clamd package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep clamd\\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify started clamd@scan service
+      ansible.builtin.service:
+        name: clamd@scan.service
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
+
+    - name: verify selinux boolean
+      ansible.builtin.command:
+        cmd: "getsebool {{ item }}"
+      changed_when: false
+      register: result
+      failed_when: "'off' in result.stdout"
+      loop:
+        - antivirus_can_scan_system
+        - clamd_use_jit
