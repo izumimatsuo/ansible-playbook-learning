@@ -1,0 +1,19 @@
+---
+- name: fail2ban status
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    fail2ban_jail: "sshd"
+
+  tasks:
+    - name: get {{ fail2ban_jail }} jail status
+      ansible.builtin.command:
+        cmd: "fail2ban-client status {{ fail2ban_jail }}"
+      changed_when: false
+      register: result
+
+    - name: print result
+      ansible.builtin.debug:
+        var: result.stdout_lines

@@ -1,0 +1,76 @@
+---
+- name: fail2ban install
+  hosts: all
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: start firewalld service
+      ansible.builtin.service:
+        name: firewalld.service
+        state: started
+        enabled: true
+
+  tasks:
+    - name: install epel repository
+      yum:
+        name: epel-release
+
+    - name: install fail2ban packages
+      yum:
+        name:
+          - fail2ban
+
+    - name: start fail2ban service
+      service:
+        name: fail2ban.service
+        state: started
+        enabled: true
+
+    - name: copy sshd jail conf
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.d/sshd.local
+        content: |
+          [sshd]
+          enabled = true
+          banaction = firewallcmd-ipset
+        mode: 0644
+      notify: restart fail2ban service
+
+  post_tasks:
+    - name: verify installed fail2ban package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep fail2ban\\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify started fail2ban service
+      ansible.builtin.service:
+        name: fail2ban.service
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
+
+    - name: verify sshd jail status
+      ansible.builtin.command:
+        cmd: fail2ban-client status sshd
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print jail status result
+      ansible.builtin.debug:
+        var: result.stdout_lines
+
+  handlers:
+    - name: restart fail2ban service
+      ansible.builtin.service:
+        name: fail2ban.service
+        state: restarted

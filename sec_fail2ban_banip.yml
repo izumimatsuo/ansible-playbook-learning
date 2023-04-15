@@ -1,0 +1,26 @@
+---
+- name: fail2ban banip
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    fail2ban_jail: "sshd"
+    fail2ban_banip: ""
+
+  tasks:
+    - name: set {{ fail2ban_jail }} ban ip
+      when: fail2ban_banip != ""
+      ansible.builtin.command:
+        cmd: 'fail2ban-client set {{ fail2ban_jail }} banip {{ fail2ban_banip }}'
+      changed_when: false
+
+    - name: get {{ fail2ban_jail }} jail status
+      ansible.builtin.command:
+        cmd: "fail2ban-client status {{ fail2ban_jail }}"
+      changed_when: false
+      register: result
+
+    - name: print result
+      ansible.builtin.debug:
+        var: result.stdout_lines

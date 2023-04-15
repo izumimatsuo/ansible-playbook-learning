@@ -1,0 +1,33 @@
+---
+- name: fail2ban unbanip
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    fail2ban_jail: "sshd"
+    fail2ban_unbanip: ""
+
+  tasks:
+    - name: gathering {{ fail2ban_jail }} banned ip
+      ansible.builtin.shell:
+        cmd: "fail2ban-client status {{ fail2ban_jail }} | grep -oP '(?<=Banned IP list:\\t).+$'"
+      changed_when: false
+      failed_when: false
+      register: result
+
+    - name: set {{ fail2ban_jail }} unban ip
+      when: fail2ban_unbanip != "" or result.stdout != ""
+      ansible.builtin.command:
+        cmd: 'fail2ban-client set {{ fail2ban_jail }} unbanip {{ fail2ban_unbanip if fail2ban_unbanip != "" else result.stdout }}'
+      changed_when: false
+
+    - name: get {{ fail2ban_jail }} jail status
+      ansible.builtin.command:
+        cmd: "fail2ban-client status {{ fail2ban_jail }}"
+      changed_when: false
+      register: result
+
+    - name: print result
+      ansible.builtin.debug:
+        var: result.stdout_lines
