@@ -26,7 +26,7 @@
       notify: reboot server
 
   post_tasks:
-    - name: verify selinux enforce
+    - name: verify selinux '{{ selinux_state }}'
       ansible.builtin.command:
         cmd: getenforce
       changed_when: false
