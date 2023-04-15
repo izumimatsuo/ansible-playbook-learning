@@ -10,10 +10,6 @@
       - https
 
   pre_tasks:
-    - name: install firewalld package
-      ansible.builtin.yum:
-        name: firewalld
-
     - name: start firewalld service
       ansible.builtin.service:
         name: firewalld.service
