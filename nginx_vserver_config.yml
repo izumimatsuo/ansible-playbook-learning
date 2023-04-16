@@ -17,15 +17,6 @@
           - libselinux-python
 
   tasks:
-    - name: set server-token off (hidde version)
-      ansible.builtin.lineinfile:
-        path: /etc/nginx/nginx.conf
-        insertafter: "^\\s+default_type"
-        line: "    server_tokens off;"
-        backup: true
-        validate: "/usr/sbin/nginx -t -c %s"
-      notify: restart nginx service
-
     - name: deploy virtual-server conf
       ansible.builtin.copy:
         backup: true
@@ -44,12 +35,6 @@
 
               ssl_certificate     /etc/nginx/conf.d/server.crt;
               ssl_certificate_key /etc/nginx/conf.d/server.key;
-
-              add_header X-Frame-Options SAMEORIGIN;
-              add_header X-XSS-Protection "1; mode=block";
-              add_header X-Content-Type-Options nosniff;
-              add_header Strict-Transport-Security 'max-age=31536000; includeSubDomains; preload';
-              etag off;
 
               location / {
                   root   /usr/share/nginx/html;
@@ -102,23 +87,6 @@
         port: 443
         state: started
         timeout: 5
-
-    - name: access to http localhost
-      ansible.builtin.uri:
-        url: http://localhost
-        return_content: true
-        validate_certs: false
-      register: result
-
-    - name: verify http secure settings
-      ansible.builtin.assert:
-        that:
-          - "'nginx' == result.server"
-          - "'SAMEORIGIN' == result.x_frame_options"
-          - "'1; mode=block' == result.x_xss_protection"
-          - "'nosniff' == result.x_content_type_options"
-          - "'max-age=31536000; includeSubDomains; preload' == result.strict_transport_security"
-          - "result.etag is undefined"
 
     - name: verify nginx location
       ansible.builtin.wait_for:

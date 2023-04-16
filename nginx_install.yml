@@ -18,6 +18,12 @@
       ansible.builtin.yum:
         name: nginx
 
+    - name: start nginx service
+      ansible.builtin.service:
+        name: nginx.service
+        state: started
+        enabled: true
+
     - name: edit index page
       ansible.builtin.lineinfile:
         path: /usr/share/nginx/html/index.html
@@ -25,12 +31,22 @@
         line: '\1 - {{ inventory_hostname }}\2'
         backup: true
         backrefs: true
+      notify: restart nginx service
 
-    - name: start nginx service
-      ansible.builtin.service:
-        name: nginx.service
-        state: started
-        enabled: true
+    - name: set secure config
+      ansible.builtin.blockinfile:
+        path: /etc/nginx/nginx.conf
+        insertbefore: "include"
+        block: |2
+              server_tokens off;
+              add_header X-Frame-Options SAMEORIGIN;
+              add_header X-XSS-Protection "1; mode=block";
+              add_header X-Content-Type-Options nosniff;
+              add_header Strict-Transport-Security 'max-age=31536000; includeSubDomains; preload';
+              etag off;
+        backup: true
+        validate: "/usr/sbin/nginx -t -c %s"
+      notify: restart nginx service
 
   post_tasks:
     - name: verify installed nginx package
@@ -44,13 +60,6 @@
       ansible.builtin.debug:
         var: result.stdout
 
-    - name: verify index-html
-      ansible.builtin.wait_for:
-        path: /usr/share/nginx/html/index.html
-        search_regex: "Welcome to nginx! - {{ inventory_hostname }}"
-        state: present
-        timeout: 5
-
     - name: verify started nginx
       ansible.builtin.service:
         name: nginx.service
@@ -59,3 +68,33 @@
       check_mode: true
       register: result
       failed_when: result.changed
+
+    - name: verify index-html
+      ansible.builtin.wait_for:
+        path: /usr/share/nginx/html/index.html
+        search_regex: "Welcome to nginx! - {{ inventory_hostname }}"
+        state: present
+        timeout: 5
+
+    - name: access to http localhost
+      ansible.builtin.uri:
+        url: http://localhost
+        return_content: true
+        validate_certs: false
+      register: result
+
+    - name: verify http secure settings
+      ansible.builtin.assert:
+        that:
+          - "'nginx' == result.server"
+          - "'SAMEORIGIN' == result.x_frame_options"
+          - "'1; mode=block' == result.x_xss_protection"
+          - "'nosniff' == result.x_content_type_options"
+          - "'max-age=31536000; includeSubDomains; preload' == result.strict_transport_security"
+          - "result.etag is undefined"
+
+  handlers:
+    - name: restart nginx service
+      ansible.builtin.service:
+        name: nginx.service
+        state: restarted
