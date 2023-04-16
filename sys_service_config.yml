@@ -1,0 +1,32 @@
+---
+- name: stop & disabled unnecessary services
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    sys_unnecessary_services:
+      - rpcbind
+
+  tasks:
+    - name: populate service facts
+      service_facts:
+
+    - name: stop unnecessary services
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: false
+      when: item in ansible_facts.services or item + '.service' in ansible_facts.services
+      loop: "{{ sys_unnecessary_services }}"
+
+  post_tasks:
+    - name: verify stopped services
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: false
+      check_mode: true
+      register: result
+      failed_when: result.changed
+      loop: "{{ sys_unnecessary_services }}"
