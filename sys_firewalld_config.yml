@@ -6,6 +6,7 @@
 
   vars:
     firewalld_services:
+      - ssh
       - http
       - https
 
@@ -17,6 +18,22 @@
         enabled: true
 
   tasks:
+    - name: populate service facts
+      ansible.builtin.command:
+        cmd: "firewall-cmd --list-services --zone=public --permanent"
+      changed_when: false
+      register: service_facts
+
+    - name: remove services
+      ansible.posix.firewalld:
+        zone: public
+        service: "{{ item }}"
+        permanent: true
+        state: disabled
+      when: item not in firewalld_services
+      loop: "{{ service_facts.stdout.split(' ') }}"
+      notify: restart firewalld service
+
     - name: add services
       ansible.posix.firewalld:
         zone: public
