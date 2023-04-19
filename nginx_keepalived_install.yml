@@ -53,7 +53,7 @@
               check_process
             }
           }
-        mode: 0644
+        mode: "0644"
       notify: restart keepalived service
 
     - name: change selinux domain to permissive

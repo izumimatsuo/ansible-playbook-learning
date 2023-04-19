@@ -34,7 +34,7 @@
           [sshd]
           enabled = true
           banaction = firewallcmd-ipset
-        mode: 0644
+        mode: "0644"
       notify: restart fail2ban service
 
   post_tasks:
