@@ -21,7 +21,7 @@
         path: /etc/rkhunter.conf
         regexp: '^{{ item }}'
         line: '#{{ item }}'
-        backup: yes
+        backup: true
       loop:
         - SCRIPTWHITELIST=/sbin/ifup
         - SCRIPTWHITELIST=/sbin/ifdown
@@ -31,8 +31,8 @@
         path: /etc/rkhunter.conf
         regexp: '^(DISABLE_TESTS=suspscan hidden_ports deleted_files packet_cap_apps apps ipc_shared_mem)$'
         line: '\1 avail_modules'
-        backrefs: yes
-        backup: yes
+        backrefs: true
+        backup: true
 
     - name: check sshd
       ansible.builtin.command:
@@ -46,7 +46,7 @@
         path: /etc/rkhunter.conf
         regexp: "^ALLOW_SSH_ROOT_USER"
         line: "ALLOW_SSH_ROOT_USER={{ 'unset' if ssh_root_user.rc != 0 else ssh_root_user.stdout.split(' ')[1] }}"
-        backup: yes
+        backup: true
 
     - name: init rkhunter database
       ansible.builtin.shell:

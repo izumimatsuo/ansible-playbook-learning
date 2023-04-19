@@ -20,4 +20,3 @@
       changed_when: false
       register: result
       failed_when: not user_shell in result.stdout
-
