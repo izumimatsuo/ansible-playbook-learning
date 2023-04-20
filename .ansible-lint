@@ -1,0 +1,9 @@
+---
+# .ansible-lint
+
+skip_list:
+  - name[casing]
+  - name[missing]
+  - name[play]
+  - no-changed-when
+  - yaml[line-length]
