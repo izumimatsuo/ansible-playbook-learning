@@ -12,16 +12,16 @@
 
   tasks:
     - name: install epel repository
-      yum:
+      ansible.builtin.yum:
         name: epel-release
 
     - name: install clamd package
-      yum:
+      ansible.builtin.yum:
         name:
           - clamd
 
     - name: set clamd scan conf
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/clamd.d/scan.conf
         regexp: "^({{ item }}.*)$"
         line: "#\\1"
@@ -31,7 +31,7 @@
         - User
 
     - name: set clamd scan conf
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/clamd.d/scan.conf
         regexp: "^#({{ item }} .*)$"
         line: "\\1"

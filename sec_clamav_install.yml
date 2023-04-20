@@ -14,7 +14,7 @@
         name: clamav
 
     - name: init clamav database
-      command: freshclam
+      ansible.builtin.command: freshclam
       args:
         creates: /var/lib/clamav/freshclam.dat
 

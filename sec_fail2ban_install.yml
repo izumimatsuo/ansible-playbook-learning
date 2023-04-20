@@ -13,16 +13,16 @@
 
   tasks:
     - name: install epel repository
-      yum:
+      ansible.builtin.yum:
         name: epel-release
 
     - name: install fail2ban packages
-      yum:
+      ansible.builtin.yum:
         name:
           - fail2ban
 
     - name: start fail2ban service
-      service:
+      ansible.builtin.service:
         name: fail2ban.service
         state: started
         enabled: true

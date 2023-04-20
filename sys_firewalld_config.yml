@@ -50,7 +50,8 @@
       changed_when: false
       register: result
 
-    - fail:
+    - name: fail
+      ansible.builtin.fail:
       when: item not in result.stdout
       loop: "{{ firewalld_services }}"
 

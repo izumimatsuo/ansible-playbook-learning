@@ -10,10 +10,10 @@
 
   tasks:
     - name: populate service facts
-      service_facts:
+      ansible.builtin.service_facts:
 
     - name: stop unnecessary services
-      service:
+      ansible.builtin.service:
         name: "{{ item }}"
         state: stopped
         enabled: false

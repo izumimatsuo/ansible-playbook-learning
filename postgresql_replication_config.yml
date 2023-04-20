@@ -55,7 +55,8 @@
           delegate_facts: true
           when: not pgsql_replication_addr is regex("[0-9]{1,3}(\.[0-9]{1,3}){3}")
 
-        - set_fact:
+        - name: master ip addr as fact
+          ansible.builtin.set_fact:
             master_ip_addr: "{{ result.stdout if result.stdout is defined else pgsql_replication_addr }}"
 
         - name: stop postgresql service

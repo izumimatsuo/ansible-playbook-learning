@@ -31,7 +31,7 @@
         cmd: getenforce
       changed_when: false
       register: result
-      failed_when: selinux_state != result.stdout|lower
+      failed_when: selinux_state != result.stdout | lower
 
   handlers:
     - name: reboot server
