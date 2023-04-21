@@ -10,7 +10,8 @@
     pgsql_replication_addr: "eth1"
 
   tasks:
-    - block:
+    - name: setup replication master node
+      block:
         - name: edit postgresql.conf
           ansible.builtin.blockinfile:
             path: "/var/lib/pgsql/{{ pgsql_version }}/data/postgresql.conf"
@@ -45,7 +46,8 @@
         path: "/var/lib/pgsql/{{ pgsql_version }}/data/standby.signal"
       register: standby_signal
 
-    - block:
+    - name: setup replication slave node
+      block:
         - name: get master ip address
           ansible.builtin.shell:
             cmd: "ip address show dev {{ pgsql_replication_addr }} | grep -oP '(?<=inet )\\S+(?=/)'"
@@ -73,6 +75,8 @@
           become_user: postgres
           ansible.builtin.command:
             cmd: pg_basebackup -R -D /var/lib/pgsql/{{ pgsql_version }}/data/ -h {{ master_ip_addr }}
+          register: result
+          changed_when: result == 0
 
         - name: start postgresql service
           ansible.builtin.service:

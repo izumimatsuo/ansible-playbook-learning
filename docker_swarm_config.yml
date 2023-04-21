@@ -30,17 +30,21 @@
       ansible.builtin.command:
         cmd: docker swarm init --advertise-addr {{ docker_swarm_advertise_addr }}
 
-    - block:
+    - name: join docker-swarm cluster
+      block:
         - name: get docker-swarm join-token
           ansible.builtin.shell:
             cmd: set -o pipefail; docker swarm join-token {{ 'manager' if docker_swarm_manager else 'worker' }} | grep 'docker swarm join'
           register: docker_swarm_join_token
           delegate_to: "{{ docker_swarm_leader_host }}"
           delegate_facts: true
+          changed_when: false
 
         - name: Join docker-swarm cluster
           ansible.builtin.command:
             cmd: "{{ docker_swarm_join_token.stdout }}"
+          register: result
+          changed_when: result.rc == 0
 
       when: docker_swarm_inactive and docker_swarm_leader_host != inventory_hostname
 
