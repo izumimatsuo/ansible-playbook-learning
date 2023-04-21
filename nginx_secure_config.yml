@@ -1,0 +1,45 @@
+---
+- name: nginx setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: set secure config
+      ansible.builtin.blockinfile:
+        path: /etc/nginx/nginx.conf
+        insertbefore: "include"
+        block: |2
+              server_tokens off;
+              add_header X-Frame-Options SAMEORIGIN;
+              add_header X-XSS-Protection "1; mode=block";
+              add_header X-Content-Type-Options nosniff;
+              add_header Strict-Transport-Security 'max-age=31536000; includeSubDomains; preload';
+              etag off;
+        backup: true
+        validate: "/usr/sbin/nginx -t -c %s"
+      notify: restart nginx service
+
+  post_tasks:
+    - name: access to http localhost
+      ansible.builtin.uri:
+        url: http://localhost
+        return_content: true
+        validate_certs: false
+      register: result
+
+    - name: verify http secure settings
+      ansible.builtin.assert:
+        that:
+          - "'nginx' == result.server"
+          - "'SAMEORIGIN' == result.x_frame_options"
+          - "'1; mode=block' == result.x_xss_protection"
+          - "'nosniff' == result.x_content_type_options"
+          - "'max-age=31536000; includeSubDomains; preload' == result.strict_transport_security"
+          - "result.etag is undefined"
+
+  handlers:
+    - name: restart nginx service
+      ansible.builtin.service:
+        name: nginx.service
+        state: restarted
