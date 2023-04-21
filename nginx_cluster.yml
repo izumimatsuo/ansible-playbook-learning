@@ -1,4 +1,8 @@
 ---
-- import_playbook: sys_selinux_enforce.yml
-- import_playbook: nginx_install.yml
-- import_playbook: nginx_keepalived_install.yml
+
+- name: play selinux enforce
+  import_playbook: sys_selinux_enforce.yml
+- name: play nginx install
+  import_playbook: nginx_install.yml
+- name: play keepalived install
+  import_playbook: nginx_keepalived_install.yml

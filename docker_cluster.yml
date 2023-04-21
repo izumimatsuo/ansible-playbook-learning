@@ -1,4 +1,8 @@
 ---
-- import_playbook: sys_selinux_enforce.yml
-- import_playbook: docker_install.yml
-- import_playbook: docker_swarm_config.yml
+
+- name: play selinux enforce
+  import_playbook: sys_selinux_enforce.yml
+- name: play docker install
+  import_playbook: docker_install.yml
+- name: play docker swarm setup
+  import_playbook: docker_swarm_config.yml

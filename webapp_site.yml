@@ -2,30 +2,41 @@
 #
 # Basic setting
 #
-- import_playbook: sys_selinux_enforce.yml
-- import_playbook: sys_user_config.yml
-- import_playbook: sys_sshd_config.yml
-- import_playbook: sys_firewalld_config.yml
+- name: plya selinux enforce
+  import_playbook: sys_selinux_enforce.yml
+- name: play user config
+  import_playbook: sys_user_config.yml
+- name: play sshd config
+  import_playbook: sys_sshd_config.yml
+- name: play firewalld config
+  import_playbook: sys_firewalld_config.yml
 
 #
 # Web tier
 #
-- import_playbook: nginx_install.yml
-- import_playbook: nginx_vserver_config.yml
+- name: play nginx install
+  import_playbook: nginx_install.yml
+- name: play nginx virtual server config
+  import_playbook: nginx_vserver_config.yml
 
 #
 # Application tier
 #
-- import_playbook: docker_install.yml
-- import_playbook: docker_container_deploy.yml
+- name: play docker install
+  import_playbook: docker_install.yml
+- name: play docker container deploy
+  import_playbook: docker_container_deploy.yml
 
 #
 # Database tier
 #
-- import_playbook: postgresql_install.yml
-- import_playbook: postgresql_initdb_config.yml
+- name: play postgresql install
+  import_playbook: postgresql_install.yml
+- name: play postgresql database setup
+  import_playbook: postgresql_initdb_config.yml
 
 #
 # Integration test
 #
-- import_playbook: test_webapp_site.yml
+- name: play test
+  import_playbook: test_webapp_site.yml
