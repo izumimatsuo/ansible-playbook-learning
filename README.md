@@ -6,6 +6,7 @@ ansibleで作って学ぶ ITインフラの基本
 
 ### system
 
+- sys_env_check.yml - システム設定の確認(hostname/local/timezone/ntp)
 - sys_firewalld_config.yml - firewalldの設定(ssh, http, https)
 - sys_pkg_update.yml - インストール済みpackageの更新
 - sys_selinux_enforce.yml - selinuxの有効化
