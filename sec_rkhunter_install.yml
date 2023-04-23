@@ -50,8 +50,9 @@
 
     - name: init rkhunter database
       ansible.builtin.shell:
-        cmd: rkhunter --update; rkhunter --propupd
+        cmd: rkhunter --update; rkhunter --propupd; rkhunter --check --skip-keypress --report-warnings-only
         creates: /var/lib/rkhunter/db/rkhunter.dat
+      failed_when: false
 
   post_tasks:
     - name: verify installed rkhunter package
