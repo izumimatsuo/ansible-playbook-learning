@@ -17,6 +17,11 @@
         - PubkeyAuthentication yes
         - PermitRootLogin no
         - PasswordAuthentication no
+        - PermitEmptyPasswords no
+        - ChallengeResponseAuthentication no
+        - KerberosAuthentication no
+        - GSSAPIAuthentication no
+        - X11Forwarding no
       notify: restart sshd service
 
   post_tasks:
@@ -30,6 +35,11 @@
         - PubkeyAuthentication yes
         - PermitRootLogin no
         - PasswordAuthentication no
+        - PermitEmptyPasswords no
+        - ChallengeResponseAuthentication no
+        - KerberosAuthentication no
+        - GSSAPIAuthentication no
+        - X11Forwarding no
 
   handlers:
     - name: restart sshd service
