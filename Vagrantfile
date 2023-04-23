@@ -12,7 +12,7 @@ Vagrant.configure("2") do |config|
   SHELL
 
   config.vm.provision :ansible do |ansible|
-    ansible.playbook = "test_virtual_machine.yml"
+    ansible.playbook = "sys_env_check.yml"
   end
 
   config.vm.provider "virtualbox" do |vb|

@@ -1,8 +1,13 @@
 ---
-- name: test virtual machine
+- name: system environment check
   hosts: all
   become: true
   gather_facts: false
+
+  vars:
+    env_hostname: "{{ inventory_hostname }}"
+    env_local: 'en_US.UTF-8'
+    env_timezone: 'Asia/Tokyo'
 
   tasks:
     - name: gathering os-release info
@@ -15,24 +20,30 @@
       ansible.builtin.debug:
         var: result.stdout
 
-  post_tasks:
-    - name: verify hostname '{{ inventory_hostname }}'
+    - name: verify hostname '{{ env_hostname }}'
       ansible.builtin.command:
         cmd: hostname
       changed_when: false
       register: result
       failed_when: inventory_hostname != result.stdout
 
-    - name: verify locale 'en_US.UTF-8'
+    - name: verify locale '{{ env_local }}'
       ansible.builtin.command:
         cmd: locale
       changed_when: false
       register: result
-      failed_when: "'LANG=en_US.UTF-8' not in result.stdout"
+      failed_when: env_local not in result.stdout
 
-    - name: verify timedate 'Asia/Tokyo'
+    - name: verify timezone '{{ env_timezone }}'
       ansible.builtin.command:
         cmd: timedatectl
       changed_when: false
       register: result
-      failed_when: "'Time zone: Asia/Tokyo' not in result.stdout"
+      failed_when: "'Time zone: ' + env_timezone not in result.stdout"
+
+    - name: verify ntp 'synchronized'
+      ansible.builtin.command:
+        cmd: chronyc tracking
+      changed_when: false
+      register: result
+      failed_when: "'Not synchronized' in result.stdout"
