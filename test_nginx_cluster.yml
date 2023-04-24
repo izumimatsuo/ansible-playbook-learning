@@ -22,13 +22,14 @@
 
     - name: set nginx master node as fact
       ansible.builtin.set_fact:
-        nginx_master_node: "{{ true if 'MASTER' in vrrp_state.stdout else false}}"
+        nginx_master_node: "{{ true if 'MASTER' in vrrp_state.stdout else false }}"
 
   tasks:
     - name: stop {{ cluster_check_proc }} service on 'MASTER'
       when: nginx_master_node and 'no' == cluster_check_timeout
-      ansible.builtin.command:
-        cmd: "/usr/bin/systemctl stop {{ cluster_check_proc }}.service"
+      ansible.builtin.service:
+        name: "{{ cluster_check_proc }}.service"
+        state: stopped
       changed_when: false
 
     - name: hung up {{ cluster_check_proc }} service on 'MASTER'
@@ -57,11 +58,11 @@
         cmd: journalctl -u keepalived | grep STATE | tail -n 1
       changed_when: false
       register: vrrp_state
-      failed_when: "'MASTER' not in vrrp_state.stdout "
+      failed_when: "'MASTER' not in vrrp_state.stdout"
 
     - name: verify virtual ip on 'MASTER'
       when: not nginx_master_node
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: ip address show
       changed_when: false
       register: result
@@ -70,6 +71,7 @@
   post_tasks:
     - name: restart {{ cluster_check_proc }} service
       when: nginx_master_node
-      ansible.builtin.command:
-        cmd: "/usr/bin/systemctl restart {{ cluster_check_proc }}.service"
+      ansible.builtin.service:
+        name: "{{ cluster_check_proc }}.service"
+        state: restarted
       changed_when: false
