@@ -22,6 +22,7 @@ ansibleで作って学ぶ ITインフラの基本
 - nginx_keepalived_install.yml - クラスタツールのインストールと設定(keepalived)
 - nginx_secure_config.yml - セキュリテイ設定
 - nginx_vserver_config.yml - 仮想サーバーの設定(/guacamole)
+- test_nginx_cluster.yml - Webサーバークラスタのフェイルオーバーテスト
 
 ### docker
 
