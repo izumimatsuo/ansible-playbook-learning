@@ -6,7 +6,7 @@ ansibleで作って学ぶ ITインフラの基本
 
 ### system
 
-- sys_env_check.yml - システム設定の確認(hostname/local/timezone/ntp)
+- sys_env_check.yml - システム設定の確認(hostname, local, timezone, ntp)
 - sys_firewalld_config.yml - firewalldの設定(ssh, http, https)
 - sys_pkg_update.yml - インストール済みpackageの更新
 - sys_selinux_enforce.yml - selinuxの有効化
@@ -29,14 +29,14 @@ ansibleで作って学ぶ ITインフラの基本
 - docker_cluster.yml - Appサーバークラスタを構築(docker-swarm)
 - docker_container_deploy.yml - Appコンテナデプロイ(guacamole)
 - docker_install.yml - docker-ceのインストール
-- docker_swarm_config.yml - クタスタ化の設定
+- docker_swarm_config.yml - クラスタ化の設定
 
 ### postgresql
 
 - postgresql_cluster.yml - DBサーバークラスタを構築(postgresql)
 - postgresql_initdb_config.yml - DB作成(guacamole)
 - postgresql_install.yml - postgresqlのインストール
-- postgresql_replication_config.yml - レプリケーションの設定(streaming)
+- postgresql_replication_config.yml - streamingレプリケーションの設定
 
 ### security
 
@@ -54,6 +54,9 @@ ansibleで作って学ぶ ITインフラの基本
 - sec_fail2ban_install.yml - 不正侵入防御ツールのインストールと設定
 - sec_fail2ban_status.yml - banされたipの確認
 - sec_fail2ban_unbanip.yml - banしたipのリセット
+
+#### - naxsi
+- sec_nginx_naxsi_install.yml - nginx用WAFモジュールのインストールと設定
 
 #### - rkhunter
 - sec_rkhunter_install.yml - バックドア(root kit)検知ツールのインストールと設定
