@@ -35,8 +35,13 @@
           global_defs {
           }
 
-          vrrp_script check_process {
+          vrrp_script check_active {
             script "/usr/bin/systemctl is-active nginx.service"
+            interval 3
+          }
+
+          vrrp_script check_timeout {
+            script "/usr/bin/timeout 5 /usr/bin/curl http://localhost"
             interval 3
           }
 
@@ -50,7 +55,8 @@
               {{ nginx_cluster.virtual_ipaddr }}
             }
             track_script {
-              check_process
+              check_active
+              check_timeout
             }
           }
         mode: "0644"
