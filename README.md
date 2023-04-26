@@ -66,7 +66,7 @@ ansibleで作って学ぶ ITインフラの基本
 #### - rkhunter
 - sec_rkhunter_install.yml - バックドア(root kit)検知ツールのインストールと設定
 
-### operational
+### operation
 
 #### - monitor
 - opt_node_exporter_install.yml - メトリクス情報公開ミドルのインストール
