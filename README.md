@@ -38,6 +38,11 @@ ansibleで作って学ぶ ITインフラの基本
 - postgresql_install.yml - postgresqlのインストール
 - postgresql_replication_config.yml - streamingレプリケーションの設定
 
+### web application site
+
+- test_webapp_site.yml - 構築したWeb3層アプリケーションのテスト
+- webapp_site.yml - Web3層アプリケーションの構築(guacamole)
+
 ### security
 
 #### - aide
@@ -61,7 +66,7 @@ ansibleで作って学ぶ ITインフラの基本
 #### - rkhunter
 - sec_rkhunter_install.yml - バックドア(root kit)検知ツールのインストールと設定
 
-### web application site
+### operational
 
-- test_webapp_site.yml - 構築したWeb3層アプリケーションのテスト
-- webapp_site.yml - Web3層アプリケーションの構築(guacamole)
+#### - monitor
+- opt_node_exporter_install.yml - メトリクス情報公開ミドルのインストール
