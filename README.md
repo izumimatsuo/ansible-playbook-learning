@@ -2,9 +2,9 @@
 
 ansibleで作って学ぶ ITインフラの基本
 
-## playbook list
+## Playbook list
 
-### system
+### System
 
 - sys_env_check.yml - システム設定の確認(hostname, local, timezone, ntp)
 - sys_firewalld_config.yml - firewalldの設定(ssh, http, https)
@@ -15,7 +15,7 @@ ansibleで作って学ぶ ITインフラの基本
 - sys_sshd_config.yml - rootユーザーのリモートアクセスを無効化
 - sys_user_config.yml - rootユーザーのログインシェルを変更(/sbin/nologin)
 
-### nginx
+### Nginx
 
 - nginx_cluster.yml - Webサーバークラスタを構築(nginx, keepalived)
 - nginx_install.yml - nginxのインストール
@@ -24,26 +24,26 @@ ansibleで作って学ぶ ITインフラの基本
 - nginx_vserver_config.yml - 仮想サーバーの設定(/guacamole)
 - test_nginx_cluster.yml - Webサーバークラスタのフェイルオーバーテスト
 
-### docker
+### Docker
 
 - docker_cluster.yml - Appサーバークラスタを構築(docker-swarm)
 - docker_container_deploy.yml - Appコンテナデプロイ(guacamole)
 - docker_install.yml - docker-ceのインストール
 - docker_swarm_config.yml - クラスタ化の設定
 
-### postgresql
+### Postgresql
 
 - postgresql_cluster.yml - DBサーバークラスタを構築(postgresql)
 - postgresql_initdb_config.yml - DB作成(guacamole)
 - postgresql_install.yml - postgresqlのインストール
 - postgresql_replication_config.yml - streamingレプリケーションの設定
 
-### web application site
+### Web application site
 
 - test_webapp_site.yml - 構築したWeb3層アプリケーションのテスト
 - webapp_site.yml - Web3層アプリケーションの構築(guacamole)
 
-### security
+### Security
 
 #### - aide
 - sec_aide_check.yml - aide checkの実行
@@ -66,7 +66,10 @@ ansibleで作って学ぶ ITインフラの基本
 #### - rkhunter
 - sec_rkhunter_install.yml - バックドア(root kit)検知ツールのインストールと設定
 
-### operation
+### Operation
 
 #### - monitor
 - opt_node_exporter_install.yml - メトリクス情報公開ミドルのインストール
+
+#### - runbook automation
+- opt_rundeck_container_deploy.yml - 運用手順の自動化(ジョブ管理)ミドルのインストール

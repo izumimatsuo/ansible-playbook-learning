@@ -1,0 +1,89 @@
+---
+- name: rundeck container deploy
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    rundeck_grails_url: "http://192.168.56.11:4440"
+    rundeck_container_image: "rundeck/rundeck:SNAPSHOT"
+    postgresql_container_image: "postgres"
+
+  pre_tasks:
+    - name: fetch pip installer
+      ansible.builtin.uri:
+        url: https://bootstrap.pypa.io/pip/2.7/get-pip.py
+        return_content: yes
+      register: pip_installer
+
+    - name: run pip installer
+      ansible.builtin.shell:
+        cmd: python
+        stdin: "{{ pip_installer.content }}"
+      args:
+        creates: /usr/bin/pip
+
+    - name: install docker python package
+      ansible.builtin.pip:
+        name:
+          - docker-compose
+
+  tasks:
+    - name: start-up containers
+      community.docker.docker_compose:
+         project_name: rundeck
+         definition:
+           version: '3'
+
+           services:
+             rundeck:
+               image: "{{ rundeck_container_image }}"
+               container_name: rundeck
+               environment:
+                 RUNDECK_DATABASE_DRIVER: org.postgresql.Driver
+                 RUNDECK_DATABASE_USERNAME: rundeck
+                 RUNDECK_DATABASE_PASSWORD: rundeck
+                 RUNDECK_DATABASE_URL: jdbc:postgresql://rdb/rundeck
+                 RUNDECK_GRAILS_URL: "{{ rundeck_grails_url }}"
+                 RUNDECK_MAIL_SMTP_HOST: mail
+                 RUNDECK_MAIL_SMTP_PORT: 1025
+                 RUNDECK_MAIL_FROM: notifier@mail.example.com
+               volumes:
+                 - ${RUNDECK_LICENSE_FILE:-/dev/null}:/home/rundeck/etc/rundeckpro-license.key
+               ports:
+                 - 4440:4440
+
+             rdb:
+               image: "{{ postgresql_container_image }}"
+               container_name: rdb
+               environment:
+                 POSTGRES_USER: rundeck
+                 POSTGRES_PASSWORD: rundeck
+                 POSTGRES_DB: rundeck
+               volumes:
+                 - rundeck_database:/var/lib/postgresql/data
+
+             mail:
+               image: schickling/mailcatcher
+               container_name: mail
+               ports:
+                 - 1025:1025
+                 - 1080:1080
+
+           volumes:
+             rundeck_database:
+
+  post_tasks:
+    - name: verify started postresql contailner
+      ansible.builtin.command:
+        cmd: docker container ls
+      changed_when: false
+      register: result
+      failed_when: "'postgres' not in result.stdout"
+
+    - name: verify started rundeck contailner
+      ansible.builtin.command:
+        cmd: docker container ls
+      changed_when: false
+      register: result
+      failed_when: "'rundeck/rundeck' not in result.stdout"
