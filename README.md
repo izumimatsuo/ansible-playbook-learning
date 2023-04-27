@@ -70,6 +70,7 @@ ansibleで作って学ぶ ITインフラの基本
 
 #### - monitor
 - opt_node_exporter_install.yml - メトリクス情報公開ミドルのインストール
+- opt_prometheus_container_deploy.yml - 監視ミドルのインストール
 
 #### - runbook automation
 - opt_rundeck_container_deploy.yml - 運用手順の自動化(ジョブ管理)ミドルのインストール
