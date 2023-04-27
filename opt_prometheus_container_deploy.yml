@@ -6,7 +6,6 @@
 
   vars:
     prometheus_container_image: "prom/prometheus"
-    alertmanager_container_image: "prom/alertmanager"
     blackbox_exporter_container_image: "prom/blackbox-exporter"
 
   pre_tasks:
@@ -54,7 +53,7 @@
               - scheme: http
                 static_configs:
                 - targets:
-                  - alertmanager:9093
+                  - 192.168.56.11:9093
 
           scrape_configs:
             - job_name: prometheus
@@ -66,41 +65,6 @@
               static_configs:
                 - targets:
                   - 192.168.56.11:9100
-        owner: root
-        group: root
-        mode: "0644"
-      notify: restart containers
-
-    - name: copy alertmanager conf
-      ansible.builtin.copy:
-        backup: true
-        dest: /etc/prometheus/alertmanager.yml
-        content: |
-          global:
-            resolve_timeout: 5m
-            smtp_from: 'test@example.com'
-            smtp_smarthost: 'mail:1025'
-            smtp_require_tls: false
-
-          route:
-            group_by: ['alertname', 'instance']
-            group_wait: 10s
-            group_interval: 10s
-            repeat_interval: 1h
-            receiver: 'mailtest'
-
-          receivers:
-            - name: 'mailtest'
-              email_configs:
-                - to: 'root@localhost.localdomain'
-                  send_resolved: true
-
-          inhibit_rules:
-            - source_match:
-                severity: 'critical'
-              target_match:
-                severity: 'warning'
-              equal: ['alertname']
         owner: root
         group: root
         mode: "0644"
@@ -157,26 +121,10 @@
                 - 9090:9090
               restart: always
 
-            alertmanager:
-              image: prom/alertmanager
-              container_name: alertmanager
-              volumes:
-                - /etc/prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml
-              ports:
-                - 9093:9093
-              restart: always
-
                 #            blackbox-exporter:
                 #              image: prom/blackbox-exporter
                 #              container_name: blackbox-exporter
                 #              restart: always
-
-            mail:
-              image: schickling/mailcatcher
-              container_name: mail
-              ports:
-                - 1025:1025
-                - 1080:1080
 
           volumes:
             prometheus_data:
@@ -196,13 +144,6 @@
       changed_when: false
       register: result
       failed_when: "'prom/prometheus' not in result.stdout"
-
-    - name: verify started alertmanager contailner
-      ansible.builtin.command:
-        cmd: docker container ls
-      changed_when: false
-      register: result
-      failed_when: "'prom/alertmanager' not in result.stdout"
 
   handlers:
     - name: restart containers
