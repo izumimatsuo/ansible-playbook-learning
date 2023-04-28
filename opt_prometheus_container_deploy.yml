@@ -85,18 +85,18 @@
                 severity: critical
               annotations:
                 summary: "{% raw %}Instance {{ $labels.instance }} down{% endraw %}"
-                description: "{% raw %}{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 5 minutes.{% endraw %}"
+                description: "{% raw %}{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minutes.{% endraw %}"
 
           - name: blackbox-exporter
             rules:
             - alert: service_down
               expr: probe_success == 0
-              for: 2m
+              for: 1m
               labels:
                 severity: critical
               annotations:
                 summary: "{% raw %}Service {{ $labels.instance }} down{% endraw %}"
-                description: "{% raw %}{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 2 minutes.{% endraw %}"
+                description: "{% raw %}{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minutes.{% endraw %}"
         owner: root
         group: root
         mode: "0644"
@@ -122,7 +122,7 @@
               restart: always
 
                 #            blackbox-exporter:
-                #              image: prom/blackbox-exporter
+                #              image: "{{ blackbox_exporter_container_image }}"
                 #              container_name: blackbox-exporter
                 #              restart: always
 
