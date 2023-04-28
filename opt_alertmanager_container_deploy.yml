@@ -1,0 +1,120 @@
+---
+- name: alertmanager container deploy
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    alertmanager_container_image: "prom/alertmanager"
+
+  pre_tasks:
+    - name: fetch pip installer
+      ansible.builtin.uri:
+        url: https://bootstrap.pypa.io/pip/2.7/get-pip.py
+        return_content: true
+      register: pip_installer
+
+    - name: run pip installer
+      ansible.builtin.command:
+        cmd: python
+        stdin: "{{ pip_installer.content }}"
+      args:
+        creates: /usr/bin/pip
+
+    - name: install docker python package
+      ansible.builtin.pip:
+        name:
+          - docker-compose
+
+  tasks:
+    - name: create conf directory
+      ansible.builtin.file:
+        path: /etc/alertmanager
+        state: directory
+        owner: root
+        group: root
+        mode: '0744'
+
+    - name: copy alertmanager conf
+      ansible.builtin.copy:
+        backup: true
+        dest: /etc/alertmanager/alertmanager.yml
+        content: |
+          global:
+            resolve_timeout: 5m
+            smtp_from: 'test@example.com'
+            smtp_smarthost: 'mail:1025'
+            smtp_require_tls: false
+
+          route:
+            group_by: ['alertname', 'instance']
+            group_wait: 10s
+            group_interval: 10s
+            repeat_interval: 1h
+            receiver: 'mailtest'
+
+          receivers:
+            - name: 'mailtest'
+              email_configs:
+                - to: 'root@localhost.localdomain'
+                  send_resolved: true
+
+          inhibit_rules:
+            - source_match:
+                severity: 'critical'
+              target_match:
+                severity: 'warning'
+              equal: ['alertname']
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart containers
+
+    - name: copy docker-compose file
+      ansible.builtin.copy:
+        backup: true
+        dest: /etc/alertmanager/docker-compose.yml
+        content: |
+          version: '3'
+
+          services:
+            alertmanager:
+              image: prom/alertmanager
+              container_name: alertmanager
+              volumes:
+                - /etc/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+              ports:
+                - 9093:9093
+              restart: always
+
+            mail:
+              image: schickling/mailcatcher
+              container_name: mail
+              ports:
+                - 1025:1025
+                - 1080:1080
+
+          volumes:
+            prometheus_data:
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart containers
+
+    - name: start containers
+      community.docker.docker_compose:
+        project_src: /etc/alertmanager
+
+  post_tasks:
+    - name: verify started alertmanager contailner
+      ansible.builtin.command:
+        cmd: docker container ls
+      changed_when: false
+      register: result
+      failed_when: "'prom/alertmanager' not in result.stdout"
+
+  handlers:
+    - name: restart containers
+      community.docker.docker_compose:
+        project_src: /etc/alertmanager
+        restarted: true
