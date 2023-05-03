@@ -1,0 +1,57 @@
+---
+- name: postfix configration
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    postfix_mydomain: "example.com"
+    postfix_myhostname: "mail.{{ postfix_mydomain }}"
+
+  pre_tasks:
+    - name: start postfix service
+      ansible.builtin.service:
+        name: postfix.service
+        state: started
+        enabled: true
+
+  tasks:
+    - name: set postfix configration
+      ansible.builtin.lineinfile:
+        path: /etc/postfix/main.cf
+        regexp: "^{{ item.split(' =')[0] }} "
+        insertafter: "^#{{ item.split(' =')[0] }} "
+        line: "{{ item }}"
+        backup: true
+      loop:
+        - myhostname = {{ postfix_myhostname }}
+        - mydomain = {{ postfix_mydomain }}
+        - inet_interfaces = localhost
+        - masquerade_domains = {{ postfix_mydomain }}
+      notify: restart postfix service
+
+  post_tasks:
+    - name: verify postfix config
+      ansible.builtin.wait_for:
+        path: /etc/postfix/main.cf
+        search_regex: "^{{ item }}$"
+        state: present
+        timeout: 5
+      loop:
+        - myhostname = {{ postfix_myhostname }}
+        - mydomain = {{ postfix_mydomain }}
+        - inet_interfaces = localhost
+        - masquerade_domains = {{ postfix_mydomain }}
+
+    - name: verify checks
+      ansible.builtin.command:
+        cmd: postfix check
+      register: result
+      changed_when: false
+      failed_when: result.changed
+
+  handlers:
+    - name: restart postfix service
+      ansible.builtin.service:
+        name: postfix.service
+        state: restarted
