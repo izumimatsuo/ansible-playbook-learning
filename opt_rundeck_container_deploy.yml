@@ -13,11 +13,11 @@
     - name: fetch pip installer
       ansible.builtin.uri:
         url: https://bootstrap.pypa.io/pip/2.7/get-pip.py
-        return_content: yes
+        return_content: true
       register: pip_installer
 
     - name: run pip installer
-      ansible.builtin.shell:
+      ansible.builtin.command:
         cmd: python
         stdin: "{{ pip_installer.content }}"
       args:
@@ -31,47 +31,47 @@
   tasks:
     - name: start-up containers
       community.docker.docker_compose:
-         project_name: rundeck
-         definition:
-           version: '3'
+        project_name: rundeck
+        definition:
+          version: '3'
 
-           services:
-             rundeck:
-               image: "{{ rundeck_container_image }}"
-               container_name: rundeck
-               environment:
-                 RUNDECK_DATABASE_DRIVER: org.postgresql.Driver
-                 RUNDECK_DATABASE_USERNAME: rundeck
-                 RUNDECK_DATABASE_PASSWORD: rundeck
-                 RUNDECK_DATABASE_URL: jdbc:postgresql://rdb/rundeck
-                 RUNDECK_GRAILS_URL: "{{ rundeck_grails_url }}"
-                 RUNDECK_MAIL_SMTP_HOST: mail
-                 RUNDECK_MAIL_SMTP_PORT: 1025
-                 RUNDECK_MAIL_FROM: notifier@mail.example.com
-               volumes:
-                 - ${RUNDECK_LICENSE_FILE:-/dev/null}:/home/rundeck/etc/rundeckpro-license.key
-               ports:
-                 - 4440:4440
+          services:
+            rundeck:
+              image: "{{ rundeck_container_image }}"
+              container_name: rundeck
+              environment:
+                RUNDECK_DATABASE_DRIVER: org.postgresql.Driver
+                RUNDECK_DATABASE_USERNAME: rundeck
+                RUNDECK_DATABASE_PASSWORD: rundeck
+                RUNDECK_DATABASE_URL: jdbc:postgresql://rdb/rundeck
+                RUNDECK_GRAILS_URL: "{{ rundeck_grails_url }}"
+                RUNDECK_MAIL_SMTP_HOST: mail
+                RUNDECK_MAIL_SMTP_PORT: 1025
+                RUNDECK_MAIL_FROM: notifier@mail.example.com
+              volumes:
+                - ${RUNDECK_LICENSE_FILE:-/dev/null}:/home/rundeck/etc/rundeckpro-license.key
+              ports:
+                - 4440:4440
 
-             rdb:
-               image: "{{ postgresql_container_image }}"
-               container_name: rdb
-               environment:
-                 POSTGRES_USER: rundeck
-                 POSTGRES_PASSWORD: rundeck
-                 POSTGRES_DB: rundeck
-               volumes:
-                 - rundeck_database:/var/lib/postgresql/data
+            rdb:
+              image: "{{ postgresql_container_image }}"
+              container_name: rdb
+              environment:
+                POSTGRES_USER: rundeck
+                POSTGRES_PASSWORD: rundeck
+                POSTGRES_DB: rundeck
+              volumes:
+                - rundeck_database:/var/lib/postgresql/data
 
-             mail:
-               image: schickling/mailcatcher
-               container_name: mail
-               ports:
-                 - 1025:1025
-                 - 1080:1080
+            mail:
+              image: schickling/mailcatcher
+              container_name: mail
+              ports:
+                - 1025:1025
+                - 1080:1080
 
-           volumes:
-             rundeck_database:
+          volumes:
+            rundeck_database:
 
   post_tasks:
     - name: verify started postresql contailner

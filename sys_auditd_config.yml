@@ -91,7 +91,7 @@
         enabled: true
 
   handlers:
-    - name: restart auditd service
+    - name: restart auditd service # noqa command-instead-of-module
       ansible.builtin.command:
         cmd: service auditd restart
 
