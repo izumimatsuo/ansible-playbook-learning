@@ -5,9 +5,23 @@
   gather_facts: false
 
   pre_tasks:
+    - name: fetch pip installer
+      ansible.builtin.uri:
+        url: https://bootstrap.pypa.io/pip/2.7/get-pip.py
+        return_content: true
+      register: pip_installer
+
+    - name: run pip installer
+      ansible.builtin.command:
+        cmd: python
+        stdin: "{{ pip_installer.content }}"
+      args:
+        creates: /usr/bin/pip
+
     - name: install docker python package
-      ansible.builtin.yum:
-        name: python-docker-py
+      ansible.builtin.pip:
+        name:
+          - docker
 
   tasks:
     - name: start guacd container
