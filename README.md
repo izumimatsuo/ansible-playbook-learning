@@ -64,6 +64,7 @@ ansibleで作って学ぶ ITインフラの基本
 
 #### - naxsi
 - sec_nginx_naxsi_install.yml - nginx用WAFモジュールのインストールと設定
+- sec_nginx_wargio_naxsi_install.yml - nginx用WAFモジュール(wargio版)のインストールと設定
 
 #### - rkhunter
 - sec_rkhunter_install.yml - バックドア(root kit)検知ツールのインストールと設定
