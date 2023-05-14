@@ -40,7 +40,7 @@
       register: naxsi_nginx_source
 
     - name: get naxsi source
-      ansible.builtin.command:
+      ansible.builtin.command: # noqa: command-instead-of-module
         cmd: git clone --recurse-submodules https://github.com/wargio/naxsi.git
       args:
         creates: /usr/local/src/naxsi
