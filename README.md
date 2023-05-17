@@ -11,6 +11,7 @@ ansibleで作って学ぶ ITインフラの基本
 - sys_firewalld_config.yml - firewalldの設定(ssh, http, https)
 - sys_pkg_update.yml - インストール済みpackageの更新
 - sys_postfix_config.yml - メール送信専用にpostfixを設定
+- sys_rsyslog_remote_config.yml - rsyslogのリモートログ転送の設定
 - sys_selinux_enforce.yml - selinuxの有効化
 - sys_selinux_permissive.yml - selinuxの無効化
 - sys_service_config.yml - 不要なserviceの無効化(rpcbind.service)

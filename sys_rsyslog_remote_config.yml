@@ -1,0 +1,112 @@
+---
+- name: rsyslog config
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    rsyslog_reciver_hostname: "{{ ansible_play_hosts | sort | first }}"
+
+  tasks:
+    - name: edit journald config (unlimited log burst)
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/journald.conf
+        backrefs: true
+        regexp: '{{ item.regexp }}'
+        line: '{{ item.line }}'
+        backup: true
+      loop:
+        - regexp: '^#?\s*RateLimitInterval'
+          line: 'RateLimitInterval=0'
+        - regexp: '^#?\s*RateLimitBurst'
+          line: 'RateLimitBurst=0'
+      notify: restart journald service
+
+    - name: edit rsyslog config (unlimited log burst)
+      ansible.builtin.lineinfile:
+        path: /etc/rsyslog.conf
+        insertafter: '^\$ModLoad imjournal'
+        regexp: '{{ item.regexp }}'
+        line: '{{ item.line }}'
+        backup: true
+      loop:
+        - regexp: '^\$imjournalRatelimitInterval'
+          line: '$imjournalRatelimitInterval 0'
+        - regexp: '^\$imjournalRatelimitBurst'
+          line: '$imjournalRatelimitBurst 0'
+      notify: restart rsyslog service
+
+    - name: syslog sender settings
+      when: rsyslog_reciver_hostname != ""
+      block:
+        - name: edit rsyslog config (sender - action queue)
+          ansible.builtin.replace:
+            path: /etc/rsyslog.conf
+            regexp: '^#(\$Action[Queue|Resume].*)$'
+            replace: '\1'
+            backup: true
+          notify: restart rsyslog service
+
+        - name: edit rsyslog config (sender - remote hosts)
+          ansible.builtin.lineinfile:
+            path: /etc/rsyslog.conf
+            insertafter: '^\$ModLoad imjournal'
+            regexp: '^#\*\.\* @@remote-host:514'
+            line: '*.* @@{{ rsyslog_reciver_hostname }}:514'
+            backup: true
+          notify: restart rsyslog service
+
+    - name: syslog reciver settings
+      when: rsyslog_reciver_hostname != "" and inventory_hostname in rsyslog_reciver_hostname
+      block:
+        - name: edit rsyslog config (reciver - input module)
+          ansible.builtin.lineinfile:
+            path: /etc/rsyslog.conf
+            backrefs: true
+            regexp: '{{ item.regexp }}'
+            line: '{{ item.line }}'
+            backup: true
+          loop:
+            - regexp: '^#\$ModLoad imtcp$'
+              line: "$ModLoad imtcp"
+            - regexp: '^#\$InputTCPServerRun.*$'
+              line: "$InputTCPServerRun 514"
+          notify: restart rsyslog service
+
+        - name: edit rsyslog config (reciver - template)
+          ansible.builtin.blockinfile:
+            path: /etc/rsyslog.conf
+            insertafter: '^#### RULES ####'
+            block: |
+              $template RemoteHost,"/var/log/rsyslog/%hostname%/%$year%_%$month%_%$day%_messages.log"
+
+              :fromhost-ip, !isequal, "127.0.0.1" -?RemoteHost
+              & stop
+          notify: restart rsyslog service
+
+  post_tasks:
+    - name: verify access to rsyslog port '514'
+      ansible.builtin.wait_for:
+        port: 514
+        state: started
+        timeout: 5
+
+    - name: verify started rsyslog
+      ansible.builtin.service:
+        name: "rsyslogd.service"
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
+
+  handlers:
+    - name: restart journald service
+      ansible.builtin.service:
+        name: systemd-journald
+        state: restarted
+
+    - name: restart rsyslog service
+      ansible.builtin.service:
+        name: rsyslog
+        state: restarted
