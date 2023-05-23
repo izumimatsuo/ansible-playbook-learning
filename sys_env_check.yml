@@ -6,7 +6,7 @@
 
   vars:
     env_hostname: "{{ inventory_hostname }}"
-    env_local: 'en_US.UTF-8'
+    env_locale: 'en_US.UTF-8'
     env_timezone: 'Asia/Tokyo'
 
   tasks:
@@ -27,12 +27,12 @@
       register: result
       failed_when: inventory_hostname != result.stdout
 
-    - name: verify locale '{{ env_local }}'
+    - name: verify locale '{{ env_locale }}'
       ansible.builtin.command:
         cmd: locale
       changed_when: false
       register: result
-      failed_when: env_local not in result.stdout
+      failed_when: env_locale not in result.stdout
 
     - name: verify timezone '{{ env_timezone }}'
       ansible.builtin.command:
