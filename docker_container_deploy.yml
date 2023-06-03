@@ -47,7 +47,7 @@
 
     - name: generate initdb sql
       ansible.builtin.shell:
-        cmd: docker run --rm guacamole/guacamole /opt/guacamole/bin/initdb.sh --postgres > /tmp/initdb.sql
+        cmd: docker run --rm guacamole/guacamole /opt/guacamole/bin/initdb.sh --postgresql > /tmp/initdb.sql
         creates: /tmp/initdb.sql
 
   post_tasks:
