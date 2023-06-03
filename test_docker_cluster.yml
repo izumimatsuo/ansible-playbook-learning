@@ -1,0 +1,59 @@
+---
+- name: test docker cluster
+  hosts: all
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: check docker node
+      ansible.builtin.shell:
+        cmd: docker node ls | grep {{ inventory_hostname }}
+      changed_when: false
+      register: docker_node_state
+
+    - name: print docker node state
+      ansible.builtin.debug:
+        var: docker_node_state.stdout
+
+    - name: set docker swarm leader node as fact
+      ansible.builtin.set_fact:
+        docker_leader_node: "{{ true if 'Leader' in docker_node_state.stdout else false }}"
+
+  tasks:
+    - name: stop docker service on 'Leader'
+      when: docker_leader_node
+      ansible.builtin.service:
+        name: "docker.service"
+        state: stopped
+      changed_when: false
+
+    - name: wait for
+      ansible.builtin.pause:
+        seconds: 10
+
+    - name: check docker node
+      ansible.builtin.shell:
+        cmd: docker node ls | grep {{ inventory_hostname }}
+      changed_when: false
+      register: docker_node_state
+
+    - name: verify docker node state 'Leader' to 'Reachable/Unreachable'
+      when: docker_leader_node
+      ansible.builtin.shell:
+        cmd: docker node ls | grep {{ inventory_hostname }}
+      changed_when: false
+      register: docker_node_state
+      failed_when: "'Leader' in docker_node_state.stdout"
+
+    - name: check docker node
+      when: docker_leader_node
+      ansible.builtin.command:
+        cmd: docker node ls
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print docker-swarm-nodes
+      when: docker_leader_node
+      ansible.builtin.debug:
+        var: result.stdout_lines
