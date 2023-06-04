@@ -26,11 +26,12 @@
         docker_swarm_manager: "{{ true if inventory_hostname in docker_swarm_manager_hosts else false }}"
 
     - name: init docker-swarm cluster
-      when: docker_swarm_inactive and docker_swarm_leader_host == inventory_hostname
+      when: docker_swarm_inactive and inventory_hostname == docker_swarm_leader_host
       ansible.builtin.command:
         cmd: docker swarm init --advertise-addr {{ docker_swarm_advertise_addr }}
 
     - name: join docker-swarm cluster
+      when: docker_swarm_inactive and inventory_hostname != docker_swarm_leader_host
       block:
         - name: get docker-swarm join-token
           ansible.builtin.shell:
@@ -45,8 +46,6 @@
             cmd: "{{ docker_swarm_join_token.stdout }}"
           register: result
           changed_when: result.rc == 0
-
-      when: docker_swarm_inactive and docker_swarm_leader_host != inventory_hostname
 
   post_tasks:
     - name: verify docker-swarm is active
