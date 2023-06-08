@@ -1,0 +1,197 @@
+---
+- name: WAF configuration (mod_security and nginx)
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    waf_servers:
+      - host1.local:8080
+      - host2.local:8080
+    frontend_server: "192.168.56.10:8081"
+    backend_servers:
+      - host3.local:80
+
+  pre_tasks:
+    - name: install selinux packages
+      ansible.builtin.yum:
+        name:
+          - libselinux-python
+          - setroubleshoot-server
+
+  tasks:
+    - name: install mod_security packages
+      ansible.builtin.yum:
+        name:
+          - httpd
+          - mod_security
+          - mod_security_crs
+
+    - name: remove welcome page
+      ansible.builtin.file:
+        path: /etc/httpd/conf.d/welcome.conf
+        state: absent
+
+    - name: set waf listen port (8080)
+      ansible.builtin.lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: "^Listen 80"
+        line: "Listen 8080"
+        backup: true
+      notify: restart httpd service
+
+    - name: set waf proxy
+      ansible.builtin.copy:
+        backup: true
+        dest: /etc/httpd/conf.d/waf_proxy.conf
+        content: |
+          ProxyRequests Off
+          ProxyPreserveHost On
+          ProxyPass / http://{{ frontend_server }}
+          ProxyPassReverse / http://{{ frontend_server }}
+        mode: "0644"
+      notify: restart httpd service
+
+    - name: start httpd service
+      ansible.builtin.service:
+        name: httpd.service
+        state: started
+        enabled: true
+
+    - name: nginx load-balancer config
+      ansible.builtin.copy:
+        backup: true
+        dest: /etc/nginx/conf.d/default.conf
+        content: |
+          # public frontend -> WAF
+          upstream waf {
+          {% for waf_addr in waf_servers %}
+            server {% if inventory_hostname in waf_addr %}localhost:8081 backup{% else %}{{ waf_addr }}{% endif %};
+          {% endfor %}
+          }
+          server {
+            listen       80 default_server;
+            server_name  localhost;
+
+            location / {
+              proxy_set_header Host $host;
+              proxy_pass http://waf;
+            }
+
+            error_page   500 502 503 504  /50x.html;
+            location = /50x.html {
+              root   /usr/share/nginx/html;
+            }
+          }
+
+          # WAF -> app servers
+          upstream backend {
+          {% for backend_addr in backend_servers %}
+            server {{ backend_addr }};
+          {% endfor %}
+          }
+          server {
+            listen       8081;
+
+            location / {
+              proxy_set_header Host $host;
+              proxy_pass http://backend;
+            }
+          }
+        mode: "0644"
+      notify: restart nginx service
+
+    - name: verify nginx config
+      ansible.builtin.command:
+        cmd: /usr/sbin/nginx -t
+      changed_when: false
+
+    - name: set selinux boolean
+      ansible.posix.seboolean:
+        name: "{{ item }}"
+        state: true
+        persistent: true
+      loop:
+        - httpd_can_network_connect
+      notify: restart nginx service
+
+    - name: allow listen port 8081
+      community.general.seport:
+        ports: 8081
+        proto: tcp
+        setype: http_port_t
+        state: present
+      notify: restart nginx service
+
+  post_tasks:
+    - name: verify installed httpd package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep httpd\\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify installed modsecurity package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep mod_security\\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify installed modsecurity crs package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep mod_security_crs\\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify started httpd
+      ansible.builtin.service:
+        name: httpd.service
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
+
+    - name: verify opened http port
+      ansible.builtin.wait_for:
+        port: "{{ item }}"
+        state: started
+        timeout: 5
+      loop:
+        - 80
+        - 8080
+        - 8081
+
+    - name: verify selinux boolean
+      ansible.builtin.command:
+        cmd: "getsebool {{ item }}"
+      changed_when: false
+      register: result
+      failed_when: "'off' in result.stdout"
+      loop:
+        - httpd_can_network_connect
+
+  handlers:
+    - name: restart httpd service
+      ansible.builtin.service:
+        name: httpd.service
+        state: restarted
+
+    - name: restart nginx service
+      ansible.builtin.service:
+        name: nginx.service
+        state: restarted
