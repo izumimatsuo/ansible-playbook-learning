@@ -9,6 +9,7 @@ ansibleで作って学ぶ ITインフラの基本
 - sys_auditd_config.yml - 監査ログを設定
 - sys_env_check.yml - システム設定の確認(hostname, local, timezone, ntp)
 - sys_firewalld_config.yml - firewalldの設定(ssh, http, https)
+- sys_hosts_config.yml - hostsファイルの設定
 - sys_pkg_update.yml - インストール済みpackageの更新
 - sys_postfix_config.yml - メール送信専用にpostfixを設定
 - sys_rsyslog_remote_config.yml - rsyslogのリモートログ転送の設定

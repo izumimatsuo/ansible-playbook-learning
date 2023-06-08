@@ -1,0 +1,40 @@
+---
+- name: /etc/hosts setup
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    sys_net_dev: "eth1"
+    sys_local_domain: "local"
+    sys_etc_hosts: "{{ ansible_play_hosts | sort }}"
+
+  tasks:
+    - name: create hosts
+      ansible.builtin.copy:
+        dest: /etc/hosts
+        content: |
+          127.0.0.1 localhost
+          {% for host in sys_etc_hosts | sort %}
+          {{ hostvars[host].ansible_facts[sys_net_dev].ipv4.address }} {{ host }} {{ host }}.{{ sys_local_domain }}
+          {% endfor %}
+        mode: "0644"
+        backup: true
+
+  post_tasks:
+    - name: verify host all entory
+      ansible.builtin.command: getent hosts
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print entory
+      ansible.builtin.debug:
+        var: result.stdout_lines
+
+    - name: verify lookup host entory
+      ansible.builtin.command: getent hosts {{ inventory_hostname }}
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
