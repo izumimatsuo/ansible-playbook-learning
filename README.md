@@ -34,6 +34,7 @@ ansibleで作って学ぶ ITインフラの基本
 - docker_container_deploy.yml - Appコンテナデプロイ(guacamole)
 - docker_install.yml - docker-ceのインストール
 - docker_swarm_config.yml - クラスタ化の設定
+- test_docker_cluster.yml - Appサーバークラスタのフェイルオーバーテスト
 
 ### Postgresql
 
@@ -44,8 +45,8 @@ ansibleで作って学ぶ ITインフラの基本
 
 ### Web application site
 
-- test_webapp_site.yml - 構築したWeb3層アプリケーションのテスト
 - webapp_site.yml - Web3層アプリケーションの構築(guacamole)
+- test_webapp_site.yml - 構築したWeb3層アプリケーションのテスト
 
 ### Security
 
