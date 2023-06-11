@@ -10,42 +10,52 @@
     docker_swarm_leader_host: "{{ docker_swarm_manager_hosts | first }}"
     docker_swarm_advertise_addr: "eth1"
 
-  tasks:
-    - name: check docker info
+  pre_tasks:
+    - name: fetch pip installer
+      ansible.builtin.uri:
+        url: https://bootstrap.pypa.io/pip/2.7/get-pip.py
+        return_content: true
+      register: pip_installer
+
+    - name: run pip installer
       ansible.builtin.command:
-        cmd: docker info
-      changed_when: false
-      register: docker_info
+        cmd: python
+        stdin: "{{ pip_installer.content }}"
+      args:
+        creates: /usr/bin/pip
 
-    - name: set docker-swarm inactive as fact
-      ansible.builtin.set_fact:
-        docker_swarm_inactive: "{{ true if 'Swarm: inactive' in docker_info.stdout else false }}"
+    - name: install docker python package
+      ansible.builtin.pip:
+        name:
+          - docker
 
+  tasks:
     - name: set docker-swarm manager as fact
       ansible.builtin.set_fact:
         docker_swarm_manager: "{{ true if inventory_hostname in docker_swarm_manager_hosts else false }}"
 
     - name: init docker-swarm cluster
-      when: docker_swarm_inactive and inventory_hostname == docker_swarm_leader_host
-      ansible.builtin.command:
-        cmd: docker swarm init --advertise-addr {{ docker_swarm_advertise_addr }}
-
-    - name: join docker-swarm cluster
-      when: docker_swarm_inactive and inventory_hostname != docker_swarm_leader_host
+      when: inventory_hostname == docker_swarm_leader_host
       block:
-        - name: get docker-swarm join-token
+        - name: init docker-swarm cluster
+          community.docker.docker_swarm:
+            state: present
+            advertise_addr: "{{ docker_swarm_advertise_addr }}"
+          register: docker_swarm
+
+        - name: get docker-swarm remote address
           ansible.builtin.shell:
-            cmd: set -o pipefail; docker swarm join-token {{ 'manager' if docker_swarm_manager else 'worker' }} | grep 'docker swarm join'
-          register: docker_swarm_join_token
-          delegate_to: "{{ docker_swarm_leader_host }}"
-          delegate_facts: true
+            cmd: set -o pipefail; docker swarm join-token worker | grep 'docker swarm join' | awk '{print $6}'
+          register: docker_swarm_remote_addr
           changed_when: false
 
-        - name: Join docker-swarm cluster
-          ansible.builtin.command:
-            cmd: "{{ docker_swarm_join_token.stdout }}"
-          register: result
-          changed_when: result.rc == 0
+    - name: join docker-swarm cluster
+      when: inventory_hostname != docker_swarm_leader_host
+      community.docker.docker_swarm:
+        state: join
+        advertise_addr: "{{ docker_swarm_advertise_addr }}"
+        join_token: "{{ hostvars[docker_swarm_leader_host].docker_swarm.swarm_facts.JoinTokens['Manager' if docker_swarm_manager else 'Worker'] }}"
+        remote_addrs: ["{{ hostvars[docker_swarm_leader_host].docker_swarm_remote_addr.stdout }}"]
 
   post_tasks:
     - name: verify docker-swarm is active
