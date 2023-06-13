@@ -15,6 +15,7 @@
       ansible.builtin.yum:
         name:
           - libselinux-python
+          - setroubleshoot-server
 
   tasks:
     - name: deploy virtual-server conf
