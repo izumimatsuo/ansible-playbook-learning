@@ -5,7 +5,29 @@
   gather_facts: false
 
   vars:
-    node_exporter_version: 1.5.0
+    node_exporter_version: "latest"
+
+  pre_tasks:
+    - name: get latest release
+      when: node_exporter_version == "latest"
+      delegate_to: localhost
+      run_once: true
+      become: false
+      block:
+        - name: get node_exporter latest version
+          ansible.builtin.uri:
+            url: "https://api.github.com/repos/prometheus/node_exporter/releases/latest"
+            method: GET
+            return_content: true
+            status_code: 200
+            body_format: json
+          register: latest_release
+          until: latest_release.status == 200
+          retries: 5
+
+        - name: set node_exporter version to '{{ latest_release.json.tag_name[1:] }}'
+          ansible.builtin.set_fact:
+            node_exporter_version: "{{ latest_release.json.tag_name[1:] }}"
 
   tasks:
     - name: create prometheus user
