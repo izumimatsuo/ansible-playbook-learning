@@ -48,6 +48,7 @@
         enabled: true
 
     - name: set selinux boolean
+      when: ansible_connection not in [ "container", "docker", "community.docker.docker" ]
       ansible.posix.seboolean:
         name: "{{ item }}"
         state: true
@@ -78,6 +79,7 @@
       failed_when: result.changed
 
     - name: verify selinux boolean
+      when: ansible_connection not in [ "container", "docker", "community.docker.docker" ]
       ansible.builtin.command:
         cmd: "getsebool {{ item }}"
       changed_when: false
