@@ -29,7 +29,7 @@
 
     - name: verify locale '{{ env_locale }}'
       ansible.builtin.command:
-        cmd: locale
+        cmd: localectl
       changed_when: false
       register: result
       failed_when: env_locale not in result.stdout
