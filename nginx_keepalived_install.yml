@@ -64,6 +64,7 @@
       notify: restart keepalived service
 
     - name: change selinux domain to permissive
+      when: ansible_connection not in ["container", "docker", "community.docker.docker"]
       community.general.selinux_permissive:
         name: "{{ item }}"
         permissive: true
@@ -104,6 +105,7 @@
         var: result.stdout
 
     - name: verify selinux permissive domain
+      when: ansible_connection not in ["container", "docker", "community.docker.docker"]
       ansible.builtin.shell:
         cmd: set -o pipefail; semanage permissive -l -n | grep {{ item }}
       changed_when: false
