@@ -9,6 +9,14 @@
     postfix_myhostname: "mail.{{ postfix_mydomain }}"
 
   pre_tasks:
+    - name: set protocol (only ipv4)
+      when: ansible_connection in [ "container", "docker", "community.docker.docker" ]
+      ansible.builtin.lineinfile:
+        path: /etc/postfix/main.cf
+        regexp: "^inet_protocols"
+        line: "inet_protocols = ipv4"
+        backup: true
+
     - name: start postfix service
       ansible.builtin.service:
         name: postfix.service
