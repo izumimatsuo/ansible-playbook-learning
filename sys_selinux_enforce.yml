@@ -27,7 +27,7 @@
 
   post_tasks:
     - name: verify selinux '{{ selinux_state }}'
-      when: ansible_connection not in [ "container", "docker", "community.docker.docker" ]
+      when: ansible_connection not in ["container", "docker", "community.docker.docker"]
       ansible.builtin.command:
         cmd: getenforce
       changed_when: false
@@ -36,5 +36,5 @@
 
   handlers:
     - name: reboot server
-      when: ansible_connection not in [ "container", "docker", "community.docker.docker" ]
+      when: ansible_connection not in ["container", "docker", "community.docker.docker"]
       ansible.builtin.reboot:

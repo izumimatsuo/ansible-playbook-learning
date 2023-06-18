@@ -10,7 +10,7 @@
 
   pre_tasks:
     - name: set protocol (only ipv4)
-      when: ansible_connection in [ "container", "docker", "community.docker.docker" ]
+      when: ansible_connection in ["container", "docker", "community.docker.docker"]
       ansible.builtin.lineinfile:
         path: /etc/postfix/main.cf
         regexp: "^inet_protocols"
