@@ -31,4 +31,5 @@
 
   handlers:
     - name: reboot server
+      when: ansible_connection not in [ "container", "docker", "community.docker.docker" ]
       ansible.builtin.reboot:
