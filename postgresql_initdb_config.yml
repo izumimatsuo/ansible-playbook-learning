@@ -38,6 +38,7 @@
       community.postgresql.postgresql_db:
         name: "{{ pgsql_db }}"
         encoding: UTF-8
+        template: template0
       register: create_db
 
     - name: create role
