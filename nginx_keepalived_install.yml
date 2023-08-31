@@ -37,11 +37,6 @@
           }
 
           vrrp_script check_active {
-            script "/usr/bin/systemctl is-active nginx.service"
-            interval 3
-          }
-
-          vrrp_script check_timeout {
             script "/usr/bin/timeout 5 /usr/bin/curl http://localhost"
             interval 3
           }
@@ -57,19 +52,9 @@
             }
             track_script {
               check_active
-              check_timeout
             }
           }
         mode: "0644"
-      notify: restart keepalived service
-
-    - name: change selinux domain to permissive
-      when: ansible_connection not in ["container", "docker", "community.docker.docker"]
-      community.general.selinux_permissive:
-        name: "{{ item }}"
-        permissive: true
-      loop:
-        - keepalived_t
       notify: restart keepalived service
 
   post_tasks:
@@ -103,16 +88,6 @@
     - name: print vrrp state
       ansible.builtin.debug:
         var: result.stdout
-
-    - name: verify selinux permissive domain
-      when: ansible_connection not in ["container", "docker", "community.docker.docker"]
-      ansible.builtin.shell:
-        cmd: set -o pipefail; semanage permissive -l -n | grep {{ item }}
-      changed_when: false
-      register: result
-      failed_when: result.rc != 0
-      loop:
-        - keepalived_t
 
   handlers:
     - name: restart keepalived service
