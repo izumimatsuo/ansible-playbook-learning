@@ -138,7 +138,7 @@
         project_src: /etc/prometheus
 
   post_tasks:
-    - name: verify started postresql contailner
+    - name: verify started prometheus contailner
       ansible.builtin.command:
         cmd: docker container ls
       changed_when: false
