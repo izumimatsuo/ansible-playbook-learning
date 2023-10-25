@@ -2,23 +2,39 @@
 - name: /etc/hosts setup
   hosts: all
   become: true
-  gather_facts: true
+  gather_facts: false
 
   vars:
     sys_net_dev: "eth1"
-    sys_local_domain: "local"
+    sys_local_domain: "localdomain"
     sys_etc_hosts: "{{ ansible_play_hosts | sort }}"
 
   tasks:
-    - name: create hosts
-      ansible.builtin.copy:
-        dest: /etc/hosts
-        content: |
-          127.0.0.1 localhost
-          {% for host in sys_etc_hosts | sort %}
-          {{ hostvars[host].ansible_facts[sys_net_dev].ipv4.address }} {{ host }} {{ host }}.{{ sys_local_domain }}
+    - name: get ip address
+      ansible.builtin.shell:
+        cmd: "ip address show dev {{ sys_net_dev }} | grep -oP '(?<=inet )\\S+(?=/)'"
+      changed_when: false
+      register: result
+
+    - name: ip address as fact
+      ansible.builtin.set_fact:
+        ipv4_address: "{{ result.stdout }}"
+
+    - name: ommit loopback address
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: ^(127\.\d\.\d\.\d\s+{{ inventory_hostname }}.*)
+        line: '#\1'
+        backrefs: true
+        backup: true
+
+    - name: add hosts address
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        block: |
+          {% for item in sys_etc_hosts %}
+          {{ hostvars[item].ipv4_address }} {{ item }} {{ item }}.{{ sys_local_domain }}
           {% endfor %}
-        mode: "0644"
         backup: true
 
   post_tasks:
