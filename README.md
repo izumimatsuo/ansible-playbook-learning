@@ -6,18 +6,18 @@ ansibleで作って学ぶ ITインフラの基本
 
 ### System
 
-- sys_auditd_config.yml - 監査ログを設定
-- sys_env_check.yml - システム設定の確認(hostname, local, timezone, ntp)
-- sys_firewalld_config.yml - firewalldの設定(ssh, http, https)
-- sys_hosts_config.yml - hostsファイルの設定
-- sys_pkg_update.yml - インストール済みpackageの更新
-- sys_postfix_config.yml - メール送信専用にpostfixを設定
-- sys_rsyslog_remote_config.yml - rsyslogのリモートログ転送の設定
-- sys_selinux_enforce.yml - selinuxの有効化
-- sys_selinux_permissive.yml - selinuxの無効化
-- sys_service_config.yml - 不要なserviceの無効化(rpcbind.service)
-- sys_sshd_config.yml - rootユーザーのリモートアクセスを無効化
-- sys_user_config.yml - rootユーザーのログインシェルを変更(/sbin/nologin)
+- [sys_auditd_config.yml](sys_auditd_config.yml) - 監査ログを設定
+- [sys_env_check.yml](sys_env_check.yml) - システム設定の確認(hostname, local, timezone, ntp)
+- [sys_firewalld_config.yml](sys_firewalld_config.yml) - firewalldの設定(ssh, http, https)
+- [sys_hosts_config.yml](sys_hosts_config.yml) - hostsファイルの設定
+- [sys_pkg_update.yml](sys_pkg_update.yml) - インストール済みpackageの更新
+- [sys_postfix_config.yml](sys_postfix_config.yml) - メール送信専用にpostfixを設定
+- [sys_rsyslog_remote_config.yml](sys_rsyslog_remote_config.yml) - rsyslogのリモートログ転送の設定
+- [sys_selinux_enforce.yml](sys_selinux_enforce.yml) - selinuxの有効化
+- [sys_selinux_permissive.yml](sys_selinux_permissive.yml) - selinuxの無効化
+- [sys_service_config.yml](sys_service_config.yml) - 不要なserviceの無効化(rpcbind.service)
+- [sys_sshd_config.yml](sys_sshd_config.yml) - rootユーザーのリモートアクセスを無効化
+- [sys_user_config.yml](sys_user_config.yml) - rootユーザーのログインシェルを変更(/sbin/nologin)
 
 ### Nginx
 
