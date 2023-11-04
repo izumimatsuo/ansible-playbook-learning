@@ -10,29 +10,59 @@
     postgresql_container_image: "postgres"
 
   pre_tasks:
-    - name: fetch pip installer
-      ansible.builtin.uri:
-        url: https://bootstrap.pypa.io/pip/2.7/get-pip.py
-        return_content: true
-      register: pip_installer
+    - name: check releasever
+      ansible.builtin.shell:
+        cmd: cat /etc/os-release | grep VERSION_ID | sed -e 's/.*"\(.*\)"/\1/'
+      changed_when: false
+      failed_when: false
+      register: result
 
-    - name: run pip installer
-      ansible.builtin.command:
-        cmd: python
-        stdin: "{{ pip_installer.content }}"
-      args:
-        creates: /usr/bin/pip
+    - name: set releasever as fact
+      ansible.builtin.set_fact:
+        releasever: "{{ result.stdout[0] }}"
+
+    - name: install python-pip packages
+      when: releasever != "7"
+      ansible.builtin.yum:
+        name:
+          - python3-pip
+
+    - name: install python-pip (python2)
+      when: releasever == "7"
+      block:
+        - name: fetch pip installer
+          ansible.builtin.uri:
+            url: https://bootstrap.pypa.io/pip/2.7/get-pip.py
+            return_content: true
+          register: pip_installer
+
+        - name: run pip installer
+          ansible.builtin.command:
+            cmd: python
+            stdin: "{{ pip_installer.content }}"
+          args:
+            creates: /usr/bin/pip
 
     - name: install docker python package
       ansible.builtin.pip:
         name:
+          - docker
           - docker-compose
 
   tasks:
-    - name: start-up containers
-      community.docker.docker_compose:
-        project_name: rundeck
-        definition:
+    - name: create conf directory
+      ansible.builtin.file:
+        path: /etc/rundeck
+        state: directory
+        owner: root
+        group: root
+        mode: '0744'
+
+    - name: copy docker-compose file
+      ansible.builtin.copy:
+        backup: true
+        dest: /etc/rundeck/docker-compose.yml
+        content: |
           version: '3'
 
           services:
@@ -63,15 +93,23 @@
               volumes:
                 - rundeck_database:/var/lib/postgresql/data
 
-            mail:
-              image: schickling/mailcatcher
-              container_name: mail
-              ports:
-                - 1025:1025
-                - 1080:1080
+                  #            mail:
+                  #              image: schickling/mailcatcher
+                  #              container_name: mail
+                  #              ports:
+                  #                - 1025:1025
+                  #                - 1080:1080
 
           volumes:
             rundeck_database:
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart containers
+
+    - name: start containers
+      community.docker.docker_compose:
+        project_src: /etc/rundeck
 
   post_tasks:
     - name: verify started postresql contailner
@@ -87,3 +125,9 @@
       changed_when: false
       register: result
       failed_when: "'rundeck/rundeck' not in result.stdout"
+
+  handlers:
+    - name: restart containers
+      community.docker.docker_compose:
+        project_src: /etc/rundeck
+        restarted: true

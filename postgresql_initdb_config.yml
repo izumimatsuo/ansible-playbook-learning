@@ -12,9 +12,21 @@
     pgsql_initdb_script: "/tmp/initdb.sql"
 
   pre_tasks:
+    - name: check releasever
+      ansible.builtin.shell:
+        cmd: cat /etc/os-release | grep VERSION_ID | sed -e 's/.*"\(.*\)"/\1/'
+      changed_when: false
+      failed_when: false
+      register: result
+
+    - name: set releasever as fact
+      ansible.builtin.set_fact:
+        releasever: "{{ result.stdout[0] }}"
+
     - name: install postgresql python package
       ansible.builtin.yum:
-        name: python2-psycopg2
+        name:
+          - "{{ 'python3-psycopg2' if releasever != '7' else 'python2-psycopg2' }}"
 
   tasks:
     - name: change listen addresses (postgresql.conf)

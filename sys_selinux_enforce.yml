@@ -8,10 +8,21 @@
     selinux_enforcing: true
 
   pre_tasks:
+    - name: check releasever
+      ansible.builtin.shell:
+        cmd: cat /etc/os-release | grep VERSION_ID | sed -e 's/.*"\(.*\)"/\1/'
+      changed_when: false
+      failed_when: false
+      register: result
+
+    - name: set releasever as fact
+      ansible.builtin.set_fact:
+        releasever: "{{ result.stdout[0] }}"
+
     - name: install selinux packages
       ansible.builtin.yum:
         name:
-          - libselinux-python
+          - "{{ 'python3-libselinux' if releasever != '7' else 'libselinux-python' }}"
           - setroubleshoot-server
 
   tasks:

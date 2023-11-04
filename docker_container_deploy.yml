@@ -5,18 +5,38 @@
   gather_facts: false
 
   pre_tasks:
-    - name: fetch pip installer
-      ansible.builtin.uri:
-        url: https://bootstrap.pypa.io/pip/2.7/get-pip.py
-        return_content: true
-      register: pip_installer
+    - name: check releasever
+      ansible.builtin.shell:
+        cmd: cat /etc/os-release | grep VERSION_ID | sed -e 's/.*"\(.*\)"/\1/'
+      changed_when: false
+      failed_when: false
+      register: result
 
-    - name: run pip installer
-      ansible.builtin.command:
-        cmd: python
-        stdin: "{{ pip_installer.content }}"
-      args:
-        creates: /usr/bin/pip
+    - name: set releasever as fact
+      ansible.builtin.set_fact:
+        releasever: "{{ result.stdout[0] }}"
+
+    - name: install python-pip packages
+      when: releasever != "7"
+      ansible.builtin.yum:
+        name:
+          - python3-pip
+
+    - name: install python-pip (python2)
+      when: releasever == "7"
+      block:
+        - name: fetch pip installer
+          ansible.builtin.uri:
+            url: https://bootstrap.pypa.io/pip/2.7/get-pip.py
+            return_content: true
+          register: pip_installer
+
+        - name: run pip installer
+          ansible.builtin.command:
+            cmd: python
+            stdin: "{{ pip_installer.content }}"
+          args:
+            creates: /usr/bin/pip
 
     - name: install docker python package
       ansible.builtin.pip:

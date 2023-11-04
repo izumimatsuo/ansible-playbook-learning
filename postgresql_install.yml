@@ -13,14 +13,44 @@
         name: ca-certificates
         state: latest
 
+    - name: update rpm-gpg-key
+      ansible.builtin.rpm_key:
+        key: https://download.postgresql.org/pub/repos/yum/RPM-GPG-KEY-PGDG
+
     - name: install epel repository
       ansible.builtin.yum:
         name: epel-release
 
+    - name: check releasever
+      ansible.builtin.shell:
+        cmd: cat /etc/os-release | grep VERSION_ID | sed -e 's/.*"\(.*\)"/\1/'
+      changed_when: false
+      failed_when: false
+      register: result
+
+    - name: set releasever as fact
+      ansible.builtin.set_fact:
+        releasever: "{{ result.stdout[0] }}"
+
   tasks:
     - name: add postgresql repository
       ansible.builtin.yum:
-        name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+        name: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ releasever }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+
+    - name: disabled default module
+      when: releasever != "7"
+      block:
+        - name: check default module
+          ansible.builtin.command:
+            cmd: dnf -y module list --disabled postgresql
+          changed_when: false
+          failed_when: false
+          register: result
+
+        - name: disable default module
+          when: result.rc != 0
+          ansible.builtin.command:
+            cmd: dnf -y module disable postgresql
 
     - name: install postgresql package
       ansible.builtin.yum:

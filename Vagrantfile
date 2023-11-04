@@ -3,7 +3,13 @@
 
 Vagrant.configure("2") do |config|
 
-  config.vm.box = "centos/7"
+  #config.vm.box = ENV["BOX"] || "centos/7"
+  config.vm.box = ENV["BOX"] || "rockylinux/8"
+  if config.vm.box.start_with?("rockylinux") then
+    config.vm.provider "virtualbox" do |vb|
+      vb.customize ["modifyvm", :id, "--firmware", "efi"]
+    end
+  end
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
   config.vm.provision "shell", inline: <<-SHELL
