@@ -13,8 +13,8 @@
       ansible.builtin.yum:
         name:
           - rkhunter
-          - unhide
-          - file
+            #          - unhide
+            #          - file
 
     - name: set rkhunter config
       ansible.builtin.lineinfile:
