@@ -11,8 +11,8 @@
 
   tasks:
     - name: gathering os-release info
-      ansible.builtin.command:
-        cmd: cat /etc/centos-release
+      ansible.builtin.shell:
+        cmd: cat /etc/os-release | grep PRETTY_NAME | sed -e 's/.*"\(.*\)"/\1/'
       changed_when: false
       register: result
 
