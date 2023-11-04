@@ -9,13 +9,6 @@
       virtual_ipaddr: "192.168.56.10"
       interface: "eth1"
 
-  pre_tasks:
-    - name: install selinux packages
-      ansible.builtin.yum:
-        name:
-          - libselinux-python
-          - setroubleshoot-server
-
   tasks:
     - name: install keepalived package
       ansible.builtin.yum:
