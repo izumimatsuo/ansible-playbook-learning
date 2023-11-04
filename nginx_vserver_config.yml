@@ -14,7 +14,6 @@
     - name: install selinux packages
       ansible.builtin.yum:
         name:
-          - libselinux-python
           - setroubleshoot-server
 
   tasks:
