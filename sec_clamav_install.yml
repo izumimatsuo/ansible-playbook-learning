@@ -11,7 +11,9 @@
 
     - name: install clamav package
       ansible.builtin.yum:
-        name: clamav
+        name:
+          - clamav
+          - clamav-update
 
     - name: init clamav database
       ansible.builtin.command: freshclam

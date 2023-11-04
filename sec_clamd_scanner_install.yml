@@ -8,7 +8,9 @@
     - name: install selinux package
       ansible.builtin.yum:
         name:
-          - libsemanage-python
+          - setroubleshoot-server
+            #          - python3-libsemanage
+            #          - libsemanage-python
 
   tasks:
     - name: install epel repository
