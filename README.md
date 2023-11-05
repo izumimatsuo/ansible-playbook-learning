@@ -11,8 +11,6 @@ ansibleで作って学ぶ ITインフラの基本
 - [sys_firewalld_config.yml](sys_firewalld_config.yml) - firewalldの設定(ssh, http, https)
 - [sys_hosts_config.yml](sys_hosts_config.yml) - hostsファイルの設定
 - [sys_pkg_update.yml](sys_pkg_update.yml) - インストール済みpackageの更新
-- [sys_postfix_config.yml](sys_postfix_config.yml) - メール送信専用にpostfixを設定
-- [sys_rsyslog_remote_config.yml](sys_rsyslog_remote_config.yml) - rsyslogのリモートログ転送の設定
 - [sys_selinux_enforce.yml](sys_selinux_enforce.yml) - selinuxの有効化
 - [sys_selinux_permissive.yml](sys_selinux_permissive.yml) - selinuxの無効化
 - [sys_service_config.yml](sys_service_config.yml) - 不要なserviceの無効化(rpcbind.service)
@@ -68,7 +66,7 @@ ansibleで作って学ぶ ITインフラの基本
 #### - mod_security
 - [sec_nginx_modsecurity_install.yml](sec_nginx_modsecurity_install.yml) - nginxと連携させるWAFモジュールのインストールと設定
 
-#### - naxsi
+#### - naxsi (duplication)
 - [sec_nginx_naxsi_install.yml](sec_nginx_naxsi_install.yml) - nginx用WAFモジュールのインストールと設定
 - [sec_nginx_wargio_naxsi_install.yml](sec_nginx_wargio_naxsi_install.yml) - nginx用WAFモジュール(wargio版)のインストールと設定
 
