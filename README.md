@@ -63,13 +63,6 @@ ansibleで作って学ぶ ITインフラの基本
 - [sec_fail2ban_status.yml](sec_fail2ban_status.yml) - banされたipの確認
 - [sec_fail2ban_unbanip.yml](sec_fail2ban_unbanip.yml) - banしたipのリセット
 
-#### - mod_security
-- [sec_nginx_modsecurity_install.yml](sec_nginx_modsecurity_install.yml) - nginxと連携させるWAFモジュールのインストールと設定
-
-#### - naxsi (duplication)
-- [sec_nginx_naxsi_install.yml](sec_nginx_naxsi_install.yml) - nginx用WAFモジュールのインストールと設定
-- [sec_nginx_wargio_naxsi_install.yml](sec_nginx_wargio_naxsi_install.yml) - nginx用WAFモジュール(wargio版)のインストールと設定
-
 #### - rkhunter
 - [sec_rkhunter_install.yml](sec_rkhunter_install.yml) - バックドア(root kit)検知ツールのインストールと設定
 
