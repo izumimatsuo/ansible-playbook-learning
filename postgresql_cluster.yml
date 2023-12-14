@@ -2,9 +2,9 @@
 
 - name: play selinux enforce
   import_playbook: sys_selinux_enforce.yml
-- name: play postgresql install
-  import_playbook: postgresql_install.yml
 - name: play /etc/hosts configuration
   import_playbook: sys_hosts_config.yml
+- name: play postgresql install
+  import_playbook: postgresql_install.yml
 - name: play postgresql replication
   import_playbook: postgresql_replication_config.yml

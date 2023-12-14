@@ -1,5 +1,5 @@
 ---
-- name: postgresql cluster configuration
+- name: postgresql replication config (by repmgr)
   hosts: all
   become: true
   gather_facts: false
@@ -7,8 +7,71 @@
   vars:
     pgsql_version: "15"
     pgsql_replication_master: "{{ ansible_play_hosts | sort | first }}"
+    pgsql_replication_addr: "eth1"
+    ssh_user_home_dir: '/var/lib/pgsql'
+    ssh_user_identity_file: '{{ ssh_user_home_dir }}/.ssh/id_rsa'
+
+  pre_tasks:
+    - name: generate ssh key pair
+      become: true
+      become_user: postgres
+      command: ssh-keygen -f {{ ssh_user_identity_file }} -q -N ""
+      args:
+        creates: '{{ ssh_user_identity_file }}'
+
+    - name: regist ssh public key
+      slurp: src={{ ssh_user_identity_file }}.pub
+      register: ssh_public_key
+
+    - name: add ssh public key
+      authorized_key:
+        user: postgres
+        key: '{{ hostvars[item]["ssh_public_key"]["content"] | b64decode }}'
+      loop: '{{ ansible_play_hosts }}'
+
+    - name: add sudoers
+      lineinfile:
+        path: '/etc/sudoers.d/postgres'
+        create: yes
+        mode: '0600'
+        regexp: '^%postgres'
+        line: '%postgres ALL=(ALL) NOPASSWD: ALL'
+        validate: '/usr/sbin/visudo -cf %s'
+
+    - name: set ssh config (StrictHostKeyChecking no)
+      blockinfile:
+        path: "{{ ssh_user_home_dir }}/.ssh/config"
+        create: true
+        backup: true
+        owner: postgres
+        group: postgres
+        mode: 0600
+        block: |
+          UserKnownHostsFile /dev/null
+          StrictHostKeyChecking no
 
   tasks:
+    - name: install repmgr package
+      ansible.builtin.yum:
+        name: "repmgr_{{ pgsql_version }}"
+
+    - name: edit repmgr configuration file
+      ansible.builtin.blockinfile:
+        path: "/etc/repmgr/{{ pgsql_version }}/repmgr.conf"
+        backup: true
+        block: |
+          node_id={{ (ansible_play_hosts | sort).index(inventory_hostname) + 1 }}
+          node_name='{{ inventory_hostname }}'
+          conninfo='host={{ inventory_hostname }} user=repmgr dbname=repmgr connect_timeout=2'
+          data_directory='/var/lib/pgsql/{{ pgsql_version }}/data'
+
+          failover='automatic'
+          promote_command='/usr/pgsql-{{ pgsql_version }}/bin/repmgr standby promote'
+          follow_command='/usr/pgsql-{{ pgsql_version }}/bin/repmgr standby follow --upstream-node-id=%n'
+
+          service_start_command='sudo systemctl start postgresql-{{ pgsql_version }}.service'
+          service_stop_command='sudo systemctl stop postgresql-{{ pgsql_version }}.service'
+
     - name: setup replication master node
       when: inventory_hostname == pgsql_replication_master
       block:
@@ -19,24 +82,50 @@
             block: |
               listen_addresses = '*'
               wal_level = replica
-              synchronous_commit = on
-              max_wal_senders = 10
+              wal_log_hints = on
+              max_wal_senders = 3
+              hot_standby = on
+              archive_mode = on
+              archive_command = '{ sleep 5; true;}'
               synchronous_standby_names = '*'
+              shared_preload_libraries = 'repmgr'
           register: postgresql_conf
 
         - name: edit pg_hba.conf
-          ansible.builtin.lineinfile:
+          ansible.builtin.blockinfile:
             path: "/var/lib/pgsql/{{ pgsql_version }}/data/pg_hba.conf"
             backup: true
-            regexp: "^host replication postgres all trust"
-            line: "host replication postgres all trust"
+            block: |
+              local   replication     repmgr                              trust
+              host    replication     repmgr      all                     trust
+
+              local   repmgr          repmgr                              trust
+              host    repmgr          repmgr      all                     trust
           register: pg_hba_conf
+
+        - name: create the repmgr user and database
+          when: postgresql_conf.changed or pg_hba_conf.changed
+          become_user: postgres
+          ansible.builtin.command:
+            cmd: "{{ item }}"
+          loop:
+            - createuser --superuser repmgr
+            - createdb --owner=repmgr repmgr
+            - psql -c 'ALTER USER repmgr SET search_path TO repmgr, public;'
+          changed_when: false
 
         - name: restart postgresql service
           when: postgresql_conf.changed or pg_hba_conf.changed
           ansible.builtin.service:
             name: "postgresql-{{ pgsql_version }}.service"
             state: restarted
+
+        - name: register the primary server
+          when: postgresql_conf.changed or pg_hba_conf.changed
+          become_user: postgres
+          ansible.builtin.command:
+            cmd: "/usr/pgsql-{{ pgsql_version }}/bin/repmgr master register"
+          changed_when: false
 
     - name: check replication started
       when: inventory_hostname != pgsql_replication_master
@@ -52,15 +141,10 @@
             name: "postgresql-{{ pgsql_version }}.service"
             state: stopped
 
-        - name: reset postgresql data directory
-          ansible.builtin.file:
-            path: "/var/lib/pgsql/{{ pgsql_version }}/data"
-            state: absent
-
-        - name: sync database
+        - name: clone database
           become_user: postgres
           ansible.builtin.command:
-            cmd: pg_basebackup -R -D /var/lib/pgsql/{{ pgsql_version }}/data/ -h {{ pgsql_replication_master }}
+            cmd: /usr/pgsql-{{ pgsql_version }}/bin/repmgr -h {{ pgsql_replication_master }} -U repmgr standby clone --force
           register: result
           changed_when: result == 0
 
@@ -69,30 +153,45 @@
             name: "postgresql-{{ pgsql_version }}.service"
             state: started
 
-  post_tasks:
-    - name: verify postgresql config
-      when: inventory_hostname == pgsql_replication_master
-      ansible.builtin.wait_for:
-        path: "/var/lib/pgsql/{{ pgsql_version }}/data/postgresql.conf"
-        search_regex: "^{{ item }}$"
-        state: present
-        timeout: 5
-      loop:
-        - listen_addresses = '\*'
-        - wal_level = replica
-        - synchronous_commit = on
-        - max_wal_senders = 10
-        - synchronous_standby_names = '\*'
+        - name: register the standby server
+          become_user: postgres
+          ansible.builtin.command:
+            cmd: "/usr/pgsql-{{ pgsql_version }}/bin/repmgr standby register"
 
-    - name: verify pg_hba config
-      when: inventory_hostname == pgsql_replication_master
-      ansible.builtin.wait_for:
-        path: "/var/lib/pgsql/{{ pgsql_version }}/data/pg_hba.conf"
-        search_regex: "^{{ item }}$"
-        state: present
-        timeout: 5
-      loop:
-        - host replication postgres all trust
+    - name: Create a directory
+      ansible.builtin.file:
+        path: /run/repmgr
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: '0755'
+
+    - name: start repmgr service
+      ansible.builtin.service:
+        name: "repmgr-{{ pgsql_version }}.service"
+        state: started
+        enabled: true
+
+  post_tasks:
+    - name: verify installed repmgr package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep repmgr_{{ pgsql_version }}\\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify started repmgr
+      ansible.builtin.service:
+        name: "repmgr-{{ pgsql_version }}.service"
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
 
     - name: verify replication started
       when: inventory_hostname != pgsql_replication_master

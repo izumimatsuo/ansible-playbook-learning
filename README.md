@@ -39,7 +39,7 @@ ansibleで作って学ぶ ITインフラの基本
 - [postgresql_cluster.yml](postgresql_cluster.yml) - DBサーバークラスタを構築(postgresql)
 - [postgresql_initdb_config.yml](postgresql_initdb_config.yml) - DB作成(guacamole)
 - [postgresql_install.yml](postgresql_install.yml) - postgresqlのインストール
-- [postgresql_replication_config.yml](postgresql_replication_config.yml) - streamingレプリケーションの設定
+- [postgresql_replication_config.yml](postgresql_replication_config.yml) - クラスタツール(repmgr)のインストールとstreamingレプリケーションの設定
 
 ### Web application site
 
