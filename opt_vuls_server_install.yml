@@ -1,0 +1,84 @@
+---
+- name: vuls server install
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: install git package
+      ansible.builtin.yum:
+        name: git
+
+    - name: create vuls user
+      ansible.builtin.user:
+        name: vulsuser
+        groups: docker
+        home: /var/lib/vuls
+        shell: /bin/bash
+
+    - name: download vulsctl
+      become_user: vulsuser
+      ansible.builtin.git:
+        repo: https://github.com/vulsio/vulsctl.git
+        dest: /var/lib/vuls/vulsctl
+        update: true
+
+    - name: install vuls-script
+      become_user: vulsuser
+      ansible.builtin.file: 
+        src: /var/lib/vuls/vulsctl/docker/{{ item }}
+        dest: /var/lib/vuls/{{ item }}
+        state: link
+        mode: '0775'
+      loop:
+        - config-test.sh
+          #- cvedb.sh
+        - oval.sh
+        - report.sh
+          #- scan.sh
+        - server.sh
+        - tui.sh
+        - vulsrepo.sh
+          #- update-all.sh
+
+    - name: create update db script
+      become_user: vulsuser
+      ansible.builtin.copy:
+        dest: /var/lib/vuls/update-db.sh
+        content: |
+          #!/bin/bash
+
+          YEAR="`date '+%Y' --date 'last year'` `date '+%Y'`"
+          ./oval.sh --redhat
+          ./cvedb.sh --nvd $YEAR ${@}
+          ./cvedb.sh --jvn $YEAR ${@}
+        mode: '0755'
+
+    - name: create cvedb.sh (bug fix)
+      become_user: vulsuser
+      ansible.builtin.shell:
+        cmd: cp vulsctl/docker/cvedb.sh . && sed -i 's/fetch ${@} \(.*\)/fetch \1 ${@}/g' cvedb.sh
+      args:
+        chdir: /var/lib/vuls
+        creates: cvedb.sh
+
+    - name: create upload script
+      ansible.builtin.copy:
+        dest: /var/lib/vuls/upload.sh
+        content: |
+          #!/bin/bash
+
+          VULS_SERVER=${VULS_SERVER:-localhost}
+          curl -X POST -H "Content-Type: text/plain" -H "X-Vuls-OS-Family: `awk '{print tolower($1)}' /etc/redhat-release`" -H "X-Vuls-OS-Release: `awk '{print $4}' /etc/redhat-release`" -H "X-Vuls-Kernel-Release: `uname -r`" -H "X-Vuls-Server-Name: `hostname`" --data-binary "`rpm -qa --queryformat "%{NAME} %{EPOCHNUM} %{VERSION} %{RELEASE} %{ARCH}\n"`" http://${VULS_SERVER}:5515/vuls
+        mode: '0755'
+
+    - name: create config.toml
+      become_user: vulsuser
+      ansible.builtin.copy:
+        dest: /var/lib/vuls/config.toml
+        content: |
+          [servers]
+          [servers.localhost]
+          host = "localhost"
+          port = "local"
+        mode: '0644'
