@@ -64,15 +64,18 @@ ansibleで作って学ぶ ITインフラの基本
 - [sec_fail2ban_unbanip.yml](sec_fail2ban_unbanip.yml) - banしたipのリセット
 
 #### - rkhunter
+- [sec_rkhunter_check.yml](sec_rkhunter_check.yml) - rkhunter checkの実行
 - [sec_rkhunter_install.yml](sec_rkhunter_install.yml) - バックドア(root kit)検知ツールのインストールと設定
 
 ### Operation
+
+#### - detect
+- [opt_vuls_server_install.yml](opt_vuls_server_install.yml) - 脆弱性検知ミドルのインストール
 
 #### - monitor
 - [opt_alertmanager_container_deploy.yml](opt_alertmanager_container_deploy.yml) - アラート通知ミドルのインストール
 - [opt_node_exporter_install.yml](opt_node_exporter_install.yml) - メトリクス情報公開ミドルのインストール
 - [opt_prometheus_container_deploy.yml](opt_prometheus_container_deploy.yml) - 監視ミドルのインストール
-- [opt_vuls_server_install.yml](opt_vuls_server_install.yml) - 脆弱性監査ミドルのインストール
 
 #### - runbook automation
 - [opt_rundeck_container_deploy.yml](opt_rundeck_container_deploy.yml) - 運用手順の自動化(ジョブ管理)ミドルのインストール
