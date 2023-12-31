@@ -1,0 +1,21 @@
+---
+- name: rkhunter --check
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: checking...
+      ansible.builtin.command:
+        cmd: rkhunter --check --skip-keypress --report-warnings-only
+      changed_when: false
+      failed_when: false
+      register: result
+
+    - name: print check result
+      ansible.builtin.debug:
+        var: result.stdout_lines
+
+    - name: check failure
+      when: result.rc != 0
+      ansible.builtin.fail:
