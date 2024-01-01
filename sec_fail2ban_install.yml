@@ -12,14 +12,21 @@
         enabled: true
 
   tasks:
+    - name: verify started firewalld service
+      ansible.builtin.service:
+        name: firewalld.service
+        state: started
+      check_mode: true
+      register: result
+      failed_when: result.changed
+
     - name: install epel repository
       ansible.builtin.yum:
         name: epel-release
 
     - name: install fail2ban packages
       ansible.builtin.yum:
-        name:
-          - fail2ban
+        name: fail2ban
 
     - name: start fail2ban service
       ansible.builtin.service:
@@ -33,7 +40,16 @@
         content: |
           [sshd]
           enabled = true
-          banaction = firewallcmd-ipset
+        mode: "0644"
+      notify: restart fail2ban service
+
+    - name: copy recidive jail conf
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.d/recidive.local
+        content: |
+          [recidive]
+          enabled = true
+          port = 1-65535
         mode: "0644"
       notify: restart fail2ban service
 
