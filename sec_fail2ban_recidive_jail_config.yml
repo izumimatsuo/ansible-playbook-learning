@@ -1,0 +1,34 @@
+---
+- name: fail2ban recidive jail setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: copy recidive jail conf
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.d/recidive.conf
+        content: |
+          [recidive]
+          enabled = true
+          port = 1-65535
+        mode: "0644"
+      notify: restart fail2ban service
+
+  post_tasks:
+    - name: verify recidive jail status
+      ansible.builtin.command:
+        cmd: fail2ban-client status recidive
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print jail status result
+      ansible.builtin.debug:
+        var: result.stdout_lines
+
+  handlers:
+    - name: restart fail2ban service
+      ansible.builtin.service:
+        name: fail2ban.service
+        state: restarted

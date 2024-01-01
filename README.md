@@ -59,8 +59,10 @@ ansibleで作って学ぶ ITインフラの基本
 
 #### - fail2ban
 - [sec_fail2ban_banip.yml](sec_fail2ban_banip.yml) - 指定のipをbanする
-- [sec_fail2ban_install.yml](sec_fail2ban_install.yml) - 不正侵入防御ツールのインストールと設定
-- [sec_fail2ban_status.yml](sec_fail2ban_status.yml) - banされたipの確認
+- [sec_fail2ban_install.yml](sec_fail2ban_install.yml) - 不正侵入防御ツールのインストールとsshd不正アクセスの設定
+- [sec_fail2ban_nginx_jail_config.yml](sec_fail2ban_nginx_jail_config.yml) - nginx不正アクセスの設定
+- [sec_fail2ban_recidive_jail_config.yml](sec_fail2ban_recidive_jail_config.yml) - 不正アクセス再発禁止の設定
+- [sec_fail2ban_status.yml](sec_fail2ban_status.yml) - jailおよびbanされたipの確認
 - [sec_fail2ban_unbanip.yml](sec_fail2ban_unbanip.yml) - banしたipのリセット
 
 #### - rkhunter

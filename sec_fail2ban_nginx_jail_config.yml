@@ -1,0 +1,46 @@
+---
+- name: fail2ban nginx jail setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: copy nginx-4xx jail filter
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/filter.d/nginx-4xx.conf
+        content: |
+          [Definition]
+          failregex = ^<HOST>.*"(GET|POST|HEAD).*" (403|404) .*$
+          ignoreregex = \.(?i)(jpe?g|gif|png|js|css|robots.txt|favicon.ico)
+        mode: "0644"
+      notify: restart fail2ban service
+
+    - name: copy nginx-4xx jail conf
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.d/nginx-4xx.conf
+        content: |
+          [nginx-4xx]
+          enabled = true
+          filter = nginx-4xx
+          port = http,https
+          logpath = /var/log/nginx/access.log
+        mode: "0644"
+      notify: restart fail2ban service
+
+  post_tasks:
+    - name: verify nginx-4xx jail status
+      ansible.builtin.command:
+        cmd: fail2ban-client status nginx-4xx
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print jail status result
+      ansible.builtin.debug:
+        var: result.stdout_lines
+
+  handlers:
+    - name: restart fail2ban service
+      ansible.builtin.service:
+        name: fail2ban.service
+        state: restarted

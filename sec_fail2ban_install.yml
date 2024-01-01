@@ -4,6 +4,11 @@
   become: true
   gather_facts: false
 
+  vars:
+    fail2ban_default_bantime: 10m
+    fail2ban_default_findtime: 10m
+    fail2ban_default_maxretry: 5
+
   pre_tasks:
     - name: start firewalld service
       ansible.builtin.service:
@@ -34,22 +39,22 @@
         state: started
         enabled: true
 
+    - name: copy default jail conf
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.local
+        content: |
+          [DEFAULT]
+          ignoreip = 127.0.0.1/8
+          bantime = {{ fail2ban_default_bantime }}
+          findtime = {{ fail2ban_default_findtime }}
+          maxretry = {{ fail2ban_default_maxretry }}
+
     - name: copy sshd jail conf
       ansible.builtin.copy:
-        dest: /etc/fail2ban/jail.d/sshd.local
+        dest: /etc/fail2ban/jail.d/sshd.conf
         content: |
           [sshd]
           enabled = true
-        mode: "0644"
-      notify: restart fail2ban service
-
-    - name: copy recidive jail conf
-      ansible.builtin.copy:
-        dest: /etc/fail2ban/jail.d/recidive.local
-        content: |
-          [recidive]
-          enabled = true
-          port = 1-65535
         mode: "0644"
       notify: restart fail2ban service
 
