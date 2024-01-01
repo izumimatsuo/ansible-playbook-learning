@@ -5,12 +5,22 @@
   gather_facts: false
 
   vars:
-    fail2ban_jail: "sshd"
+    fail2ban_jail: ""
 
   tasks:
     - name: get {{ fail2ban_jail }} jail status
       ansible.builtin.command:
         cmd: "fail2ban-client status {{ fail2ban_jail }}"
+      changed_when: false
+      register: result
+
+    - name: print result
+      ansible.builtin.debug:
+        var: result.stdout_lines
+
+    - name: get banned ip
+      ansible.builtin.command:
+        cmd: "fail2ban-client banned"
       changed_when: false
       register: result
 

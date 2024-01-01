@@ -5,7 +5,7 @@
   gather_facts: false
 
   vars:
-    fail2ban_jail: "sshd"
+    fail2ban_jail: ""
     fail2ban_unbanip: ""
 
   tasks:
