@@ -17,14 +17,6 @@
         enabled: true
 
   tasks:
-    - name: verify started firewalld service
-      ansible.builtin.service:
-        name: firewalld.service
-        state: started
-      check_mode: true
-      register: result
-      failed_when: result.changed
-
     - name: install epel repository
       ansible.builtin.yum:
         name: epel-release
