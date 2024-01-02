@@ -4,26 +4,20 @@
   become: true
   gather_facts: false
 
-  vars:
-    fail2ban_jail: ""
-
   tasks:
-    - name: get {{ fail2ban_jail }} jail status
+    - name: get jail list
+      ansible.builtin.shell:
+        cmd: fail2ban-client status | grep "Jail list" | sed -E "s/^[^:]+:[ \t]+//" | sed "s/,//g"
+      changed_when: false
+      register: jail_list
+
+    - name: get jail status
       ansible.builtin.command:
-        cmd: "fail2ban-client status {{ fail2ban_jail }}"
+        cmd: "fail2ban-client status {{ item }}"
       changed_when: false
       register: result
+      loop: "{{ jail_list.stdout | split }}"
 
     - name: print result
       ansible.builtin.debug:
-        var: result.stdout_lines
-
-    - name: get banned ip
-      ansible.builtin.command:
-        cmd: "fail2ban-client banned"
-      changed_when: false
-      register: result
-
-    - name: print result
-      ansible.builtin.debug:
-        var: result.stdout_lines
+        var: result.results | map(attribute='stdout_lines') | list
