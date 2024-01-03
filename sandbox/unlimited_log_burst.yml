@@ -1,0 +1,47 @@
+---
+- name: chank - unlimited log furst
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: edit journald config (unlimited log burst)
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/journald.conf
+        backrefs: true
+        regexp: '{{ item.regexp }}'
+        line: '{{ item.line }}'
+        backup: true
+      loop:
+        - regexp: '^#?\s*RateLimitInterval'
+          line: 'RateLimitInterval=0'
+        - regexp: '^#?\s*RateLimitBurst'
+          line: 'RateLimitBurst=0'
+      notify: restart journald service
+
+    - name: edit rsyslog config (unlimited log burst)
+      ansible.builtin.lineinfile:
+        path: /etc/rsyslog.conf
+        insertafter: '^\$ModLoad imjournal'
+        regexp: '{{ item.regexp }}'
+        line: '{{ item.line }}'
+        backup: true
+      loop:
+        - regexp: '^\$imjournalRatelimitInterval'
+          line: '$imjournalRatelimitInterval 0'
+        - regexp: '^\$imjournalRatelimitBurst'
+          line: '$imjournalRatelimitBurst 0'
+      notify: restart rsyslog service
+
+  post_tasks:
+
+  handlers:
+    - name: restart journald service
+      ansible.builtin.service:
+        name: systemd-journald
+        state: restarted
+
+    - name: restart rsyslog service
+      ansible.builtin.service:
+        name: rsyslog
+        state: restarted

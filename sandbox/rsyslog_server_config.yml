@@ -1,0 +1,66 @@
+---
+- name: rsyslog server config
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    rsyslog_reciver_hostname: "{{ ansible_play_hosts | sort | first }}"
+
+  tasks:
+    - name: syslog sender settings
+      ansible.builtin.copy:
+        dest: /etc/rsyslog.d/sender.conf
+        content: |
+          #### RULES ####
+          action(type="omfwd"  
+          queue.filename="fwdRule1"
+          queue.maxdiskspace="1g"
+          queue.saveonshutdown="on"
+          queue.type="LinkedList" 
+          action.resumeRetryCount="-1"
+          Target="{{ rsyslog_reciver_hostname }}" Port="514" Protocol="tcp")
+      notify: restart rsyslog service
+
+    - name: syslog reciver settings
+      when: inventory_hostname == rsyslog_reciver_hostname
+      ansible.builtin.copy:
+        dest: /etc/rsyslog.d/reciver.conf
+        content: |
+          #### MODULES ####
+          module(load="imtcp")
+          input(type="imtcp" port="514" ruleset="remote")
+
+          #### RULES ####
+          template(name="messages" type="string"
+            string="/var/log/remote/%hostname%/%$year%%$month%%$day%-messages.log")
+          template(name="secure" type="string"
+            string="/var/log/remote/%hostname%/%$year%%$month%%$day%-secure.log")
+          ruleset(name="remote"){
+            *.info;mail.none;authpriv.none;cron.none action(type="omfile" DynaFile="messages")
+            authpriv.* action(type="omfile" DynaFile="secure")
+          }
+      notify: restart rsyslog service
+
+  post_tasks:
+    - name: verify started rsyslog
+      ansible.builtin.service:
+        name: "rsyslogd.service"
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
+
+    - name: verify access to rsyslog port '514'
+      when: inventory_hostname == rsyslog_reciver_hostname
+      ansible.builtin.wait_for:
+        port: 514
+        state: started
+        timeout: 5
+
+  handlers:
+    - name: restart rsyslog service
+      ansible.builtin.service:
+        name: rsyslog
+        state: restarted
