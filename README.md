@@ -13,9 +13,7 @@ ansibleで作って学ぶ ITインフラの基本
 - [sys_pkg_update.yml](sys_pkg_update.yml) - インストール済みpackageの更新
 - [sys_selinux_enforce.yml](sys_selinux_enforce.yml) - selinuxの有効化
 - [sys_selinux_permissive.yml](sys_selinux_permissive.yml) - selinuxの無効化
-- [sys_service_config.yml](sys_service_config.yml) - 不要なserviceの無効化(rpcbind.service)
 - [sys_sshd_config.yml](sys_sshd_config.yml) - rootユーザーのリモートアクセスを無効化
-- [sys_superuser_config.yml](sys_superuser_config.yml) - rootユーザーのログインシェルを変更(/sbin/nologin)
 
 ### Nginx
 

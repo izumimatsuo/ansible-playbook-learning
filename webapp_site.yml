@@ -4,8 +4,6 @@
 #
 - name: plya selinux enforce
   import_playbook: sys_selinux_enforce.yml
-- name: play superuser config
-  import_playbook: sys_superuser_config.yml
 - name: play sshd config
   import_playbook: sys_sshd_config.yml
 - name: play firewalld config
