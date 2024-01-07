@@ -13,7 +13,7 @@ ansibleで作って学ぶ ITインフラの基本
 - [sys_pkg_update.yml](sys_pkg_update.yml) - インストール済みpackageの更新
 - [sys_selinux_enforce.yml](sys_selinux_enforce.yml) - selinuxの有効化
 - [sys_selinux_permissive.yml](sys_selinux_permissive.yml) - selinuxの無効化
-- [sys_sshd_config.yml](sys_sshd_config.yml) - rootユーザーのリモートアクセスを無効化
+- [sys_sshd_config.yml](sys_sshd_config.yml) - sshのセキュリティ設定
 
 ### Nginx
 
@@ -44,7 +44,7 @@ ansibleで作って学ぶ ITインフラの基本
 - [webapp_site.yml](webapp_site.yml) - Web3層アプリケーションの構築(guacamole)
 - [test_webapp_site.yml](test_webapp_site.yml) - 構築したWeb3層アプリケーションのテスト
 
-### Security
+### Security (IDS/IPS)
 
 #### - aide
 - [sec_aide_check.yml](sec_aide_check.yml) - aide checkの実行
