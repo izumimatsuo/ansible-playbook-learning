@@ -21,74 +21,15 @@
           -w /var/log/audit/audit_log.4
           -w /etc/audit/auditd.conf -p wa
           -w /etc/audit/audit.rules -p wa
-          -w /etc/libaudit.conf -p wa
-
-          # file system object
-          -a always,exit -F arch=b64 -S chmod,fchmod,chown,fchown,lchown
-          -a always,exit -F arch=b64 -S open,truncate,ftruncate,creat
-          -a always,exit -S mkdir,rmdir
-          -a always,exit -S rename,link,unlink,symlink
-          -a always,exit -S setxattr
-          -a always,exit -S lsetxattr
-          -a always,exit -S fsetxattr
-          -a always,exit -S removexattr
-          -a always,exit -S lremovexattr
-          -a always,exit -S fremovexattr
-          -a always,exit -S mknod
-          -a always,exit -F arch=b64 -S mount,umount2
 
           # security configurarion files and databases
-          -w /var/spool/atspool
-          -w /etc/at.allow
-          -w /etc/at.deny
-          -w /etc/cron.allow -p wa
-          -w /etc/cron.deny -p wa
-          -w /etc/cron.d -p wa
-          -w /etc/cron.daily -p wa
-          -w /etc/cron.hourly -p wa
-          -w /etc/cron.monthly -p wa
-          -w /etc/cron.weekly -p wa
-          -w /etc/crontab -p wa
-          -w /var/spool/cron/root
           -w /etc/group -p wa
           -w /etc/passwd -p wa
           -w /etc/shadow
-          -w /etc/login.defs -p wa
           -w /etc/securetty
-          -w /var/log/lastlog
-          -w /etc/hosts -p wa
-          -w /etc/sysconfig
-          -w /etc/init.d
-          -w /etc/ld.so.conf -p wa
           -w /etc/localtime -p wa
-          -w /etc/sysctl.conf -p wa
-          -w /etc/modprobe.d
-          -w /etc/modprobe.conf.local -p wa
-          -w /etc/modprobe.conf -p wa
-          -w /etc/pam.d
-          -w /etc/aliases -p wa
-          -w /etc/postfix -p wa
-          -w /etc/ssh/sshd_config
-          #          -w /etc/stunnel/stunnel.conf
-          #          -w /etc/stunnel/stunnel.pem
-          -w /etc/vsftpd.ftpusers
-          -w /etc/vsftpd.conf
-          -a exit,always -S sethostname
-          -w /etc/issue -p wa
-          -w /etc/issue.net -p wa
-
-          # other system calls
-          -a exit,always -S clone -S fork -S vfork
-          -a exit,always -S umask
-          -a exit,always -S adjtimex -S settimeofday
         backup: true
       notify: restart auditd service
-
-    - name: start auditd service
-      ansible.builtin.service:
-        name: auditd
-        state: started
-        enabled: true
 
   handlers:
     - name: restart auditd service # noqa command-instead-of-module
@@ -105,7 +46,7 @@
       register: result
       failed_when: result.changed
 
-    - name: verify auditctl list (audit log files and configuration files)
+    - name: verify auditctl list
       ansible.builtin.command:
         cmd: auditctl -l
       changed_when: false
@@ -121,58 +62,9 @@
         - -w /var/log/audit/audit_log.4
         - -w /etc/audit/auditd.conf -p wa
         - -w /etc/audit/audit.rules -p wa
-        - -w /etc/libaudit.conf -p wa
-        # file system object
-        - -a always,exit -F arch=b64 -S chmod,fchmod,chown,fchown,lchown
-        - -a always,exit -F arch=b64 -S open,truncate,ftruncate,creat
-        - -a always,exit -S mkdir,rmdir
-        - -a always,exit -S rename,link,unlink,symlink
-        - -a always,exit -S setxattr
-        - -a always,exit -S lsetxattr
-        - -a always,exit -S fsetxattr
-        - -a always,exit -S removexattr
-        - -a always,exit -S lremovexattr
-        - -a always,exit -S fremovexattr
-        - -a always,exit -S mknod
-        - -a always,exit -F arch=b64 -S mount,umount2
         # security configurarion files and databases
-        - -w /var/spool/atspool
-        - -w /etc/at.allow
-        - -w /etc/at.deny
-        - -w /etc/cron.allow -p wa
-        - -w /etc/cron.deny -p wa
-        - -w /etc/cron.d -p wa
-        - -w /etc/cron.daily -p wa
-        - -w /etc/cron.hourly -p wa
-        - -w /etc/cron.monthly -p wa
-        - -w /etc/cron.weekly -p wa
-        - -w /etc/crontab -p wa
-        - -w /var/spool/cron/root
         - -w /etc/group -p wa
         - -w /etc/passwd -p wa
         - -w /etc/shadow
-        - -w /etc/login.defs -p wa
         - -w /etc/securetty
-        - -w /var/log/lastlog
-        - -w /etc/hosts -p wa
-        - -w /etc/sysconfig
-        - -w /etc/init.d
-        - -w /etc/ld.so.conf -p wa
         - -w /etc/localtime -p wa
-        - -w /etc/sysctl.conf -p wa
-        - -w /etc/modprobe.d
-        - -w /etc/modprobe.conf.local -p wa
-        - -w /etc/modprobe.conf -p wa
-        - -w /etc/pam.d
-        - -w /etc/aliases -p wa
-        - -w /etc/postfix -p wa
-        - -w /etc/ssh/sshd_config
-        - -w /etc/vsftpd.ftpusers
-        - -w /etc/vsftpd.conf
-        - -a always,exit -S sethostname
-        - -w /etc/issue -p wa
-        - -w /etc/issue.net -p wa
-        # other system calls
-        - -a always,exit -S clone,fork,vfork
-        - -a always,exit -S umask
-        - -a always,exit -S adjtimex,settimeofday
