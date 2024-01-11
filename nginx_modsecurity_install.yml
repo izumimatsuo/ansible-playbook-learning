@@ -1,0 +1,171 @@
+---
+- name: nginx modsecurity setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    nginx_version:
+
+  pre_tasks:
+    - name: get installed nginx version
+      ansible.builtin.shell:
+        cmd: nginx -v |& grep -oP '(?<=nginx/)\S+'
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: set installed nginx version as fact
+      when: result.stdout != ""
+      ansible.builtin.set_fact:
+        nginx_version: "{{ result.stdout }}"
+
+    - name: print targert version
+      ansible.builtin.debug:
+        var: nginx_version
+
+  tasks:
+    - name: check modsecurity installed
+      ansible.builtin.stat:
+        path: /usr/local/modsecurity/lib/libmodsecurity.so
+      register: modsecurity
+
+    - name: check nginx connector installed
+      ansible.builtin.stat:
+        path: /etc/nginx/modules/ngx_http_modsecurity_module.so
+      register: nginx_modsec
+
+    - name: install 'Development tools' package group
+      when: not modsecurity.stat.exists or not nginx_modsec.stat.exists
+      ansible.builtin.yum:
+        name: "@Development tools"
+
+    - name: install devel packages
+      when: not modsecurity.stat.exists or not nginx_modsec.stat.exists
+      ansible.builtin.yum:
+        name:
+          - git
+          - wget
+          - httpd-devel
+          - pcre-devel
+          - libxml2-devel
+          - curl-devel
+          - openssl-devel
+
+    - name: build modsecurity (take about 15minutes)
+      when: not modsecurity.stat.exists
+      ansible.builtin.shell:
+        cmd: |
+          git clone --recurse-submodules -b v3/master --single-branch https://github.com/SpiderLabs/ModSecurity && \
+          cd ModSecurity && \
+          ./build.sh && \
+          ./configure && \
+          make && \
+          make install && \
+          test -d /etc/nginx/modsecurity || mkdir /etc/nginx/modsecurity && \
+          cp unicode.mapping /etc/nginx/modsecurity/unicode.mapping && \
+          cp modsecurity.conf-recommended /etc/nginx/modsecurity/modsecurity.conf && \
+          cd .. && \
+          rm -fR ModSecurity
+      args:
+        chdir: /usr/local/src/
+
+    - name: build nginx connector
+      when: not nginx_modsec.stat.exists
+      ansible.builtin.shell:
+        cmd: |
+          NGINX_VERSION={{ nginx_version }} && \
+          wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz && \
+          tar -xvzf nginx-${NGINX_VERSION}.tar.gz && \
+          git clone https://github.com/SpiderLabs/ModSecurity-nginx && \
+          cd nginx-${NGINX_VERSION} && \
+          ./configure --with-compat --add-dynamic-module=../ModSecurity-nginx && \
+          make modules && \
+          cp -p objs/ngx_http_modsecurity_module.so /usr/lib64/nginx/modules/ &&\
+          cd .. && \
+          rm -fR ModSecurity-nginx && \
+          rm -fR nginx-${NGINX_VERSION} && \
+          rm -f nginx-${NGINX_VERSION}.tar.gz
+      args:
+        chdir: /usr/local/src/
+
+    - name: install owasp core rule set
+      when: not nginx_modsec.stat.exists
+      ansible.builtin.shell:
+        cmd: |
+          git clone https://github.com/coreruleset/coreruleset && \
+          cp coreruleset/crs-setup.conf.example coreruleset/crs-setup.conf
+      args:
+        chdir: /etc/nginx/modsecurity
+
+    - name: remove 'Development tools' package group
+      ansible.builtin.yum:
+        name: "@Development tools"
+        state: removed
+
+    - name: remove devel packages
+      ansible.builtin.yum:
+        name:
+          - httpd-devel
+          - pcre-devel
+          - libxml2-devel
+          - curl-devel
+          - openssl-devel
+        state: removed
+
+    - name: edit modsecurity config
+      ansible.builtin.lineinfile:
+        path: /etc/nginx/modsecurity/modsecurity.conf
+        regexp: "^{{ item.split(' ')[0] }} "
+        insertafter: "^#{{ item.split(' ')[0] }} "
+        line: "{{ item }}"
+        backup: true
+      loop:
+        - SecRuleEngine On # On/Off/DetectionOnly
+        - SecAuditLog /var/log/nginx/modsec_audit.log
+      notify: restart nginx service
+
+    - name: copy modsecurity rules file
+      ansible.builtin.copy:
+        dest: /etc/nginx/modsecurity/rules.conf
+        content: |
+          include modsecurity.conf
+          include /etc/nginx/modsecurity/coreruleset/crs-setup.conf
+          include /etc/nginx/modsecurity/coreruleset/rules/*.conf
+        mode: "0644"
+      notify: restart nginx service
+
+    - name: copy nginx modsecurity conf
+      ansible.builtin.copy:
+        dest: /etc/nginx/conf.d/modsecurity.conf
+        content: |
+          modsecurity on;
+          modsecurity_rules_file /etc/nginx/modsecurity/rules.conf;
+        mode: "0644"
+      notify: restart nginx service
+
+    - name: edit nginx conf (load modsecurity module)
+      ansible.builtin.lineinfile:
+        path: /etc/nginx/nginx.conf
+        insertafter: '^worker_processes'
+        line: "load_module modules/ngx_http_modsecurity_module.so;"
+        backup: true
+        validate: '/usr/sbin/nginx -t -c %s'
+      notify: restart nginx service
+
+  post_tasks:
+    - name: verify access (200) to uri 'http://localhost'
+      ansible.builtin.uri:
+        url: "http://localhost"
+        status_code: 200
+
+    - name: verify not access (403) to uri 'http://localhost/?union+select'
+      ansible.builtin.uri:
+        url: "http://localhost/?union+select"
+        status_code: 403
+
+  handlers:
+    - name: restart nginx service
+      ansible.builtin.service:
+        name: nginx
+        state: restarted

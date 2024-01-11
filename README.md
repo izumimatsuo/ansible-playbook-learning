@@ -20,6 +20,7 @@ ansibleで作って学ぶ ITインフラの基本
 - [nginx_cluster.yml](nginx_cluster.yml) - Webサーバークラスタを構築(nginx, keepalived)
 - [nginx_install.yml](nginx_install.yml) - nginxのインストール
 - [nginx_keepalived_install.yml](nginx_keepalived_install.yml) - クラスタツールのインストールと設定(keepalived)
+- [nginx_modsecurity_install.yml](nginx_modsecurity_install.yml) - WAFのインストールと設定(modsecurity)
 - [nginx_secure_config.yml](nginx_secure_config.yml) - セキュリテイ設定
 - [nginx_vserver_config.yml](nginx_vserver_config.yml) - 仮想サーバーの設定(/guacamole)
 - [test_nginx_cluster.yml](test_nginx_cluster.yml) - Webサーバークラスタのフェイルオーバーテスト
