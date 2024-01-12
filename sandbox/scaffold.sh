@@ -1,8 +1,9 @@
 #!/bin/bash
 
 PACKAGE_NAME='squid'
+SERVICE_NAME=${PACKAGE_NAME}.service
 
-cat << EOS > $PACKAGE_NAME_install.yml
+cat << EOS > ${PACKAGE_NAME}_install.yml
 ---
 - name: $PACKAGE_NAME setup
   hosts: all
@@ -18,7 +19,7 @@ cat << EOS > $PACKAGE_NAME_install.yml
 
     - name: start $PACKAGE_NAME service
       ansible.builtin.service:
-        name: $PACKAGE_NAME.service
+        name: $SERVICE_NAME
         state: started
         enabled: true
 
@@ -36,7 +37,7 @@ cat << EOS > $PACKAGE_NAME_install.yml
 
     - name: verify started $PACKAGE_NAME service
       ansible.builtin.service:
-        name: $PACKAGE_NAME.service
+        name: $SERVICE_NAME
         state: started
         enabled: true
       check_mode: true
