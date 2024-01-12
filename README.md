@@ -75,8 +75,8 @@ ansibleで作って学ぶ ITインフラの基本
 
 #### - monitor
 - [opt_alertmanager_container_deploy.yml](opt_alertmanager_container_deploy.yml) - アラート通知ミドルのインストール
-- [opt_node_exporter_install.yml](opt_node_exporter_install.yml) - メトリクス情報公開ミドルのインストール
-- [opt_prometheus_container_deploy.yml](opt_prometheus_container_deploy.yml) - 監視ミドルのインストール
+- [opt_node_exporter_install.yml](opt_node_exporter_install.yml) - メトリクス収集エージェントのインストール
+- [opt_prometheus_container_deploy.yml](opt_prometheus_container_deploy.yml) - メトリクス監視ミドルのインストール
 
 #### - automation
 - [opt_rundeck_container_deploy.yml](opt_rundeck_container_deploy.yml) - ジョブ管理ミドルのインストール
