@@ -19,15 +19,16 @@
         state: directory
         mode: '0755'
 
-    - name: copy sample conf
+    - name: copy default conf
       ansible.builtin.copy:
-        dest: /etc/swatch/sample.conf
+        dest: /etc/swatch/default.conf
         content: |
           # logfile /var/log/yum.log
 
           watchfor /Installed:/
-            echo
+            echo "$_"
         mode: "0644"
+      notify: restart swatchd service
 
     - name: copy swatchctl
       ansible.builtin.copy:
@@ -146,3 +147,9 @@
       check_mode: true
       register: result
       failed_when: result.changed
+
+  handlers:
+    - name: restart swatchd service
+      ansible.builtin.service:
+        name: swatchd.service
+        state: restarted
