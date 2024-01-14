@@ -23,10 +23,10 @@
       ansible.builtin.copy:
         dest: /etc/swatch/default.conf
         content: |
-          # logfile /var/log/yum.log
+          # logfile /var/log/secure
 
-          watchfor /Installed:/
-            echo "$_"
+          watchfor /sshd.*: (Accepted|Disconnected|Failed)/
+            echo
         mode: "0644"
       notify: restart swatchd service
 
@@ -35,14 +35,10 @@
         dest: /usr/local/bin/swatchctl
         content: |
           #!/bin/bash
-          #
-          # swatch ctl
-          #
-          # description: swatch start/stop script
 
           PATH=/sbin:/usr/local/bin:/bin:/usr/bin
 
-          mkdir -p /var/log/swatch
+          [ ! -d /var/log/swatch ] && mkdir -p /var/log/swatch
 
           start() {
                # Start daemons.
