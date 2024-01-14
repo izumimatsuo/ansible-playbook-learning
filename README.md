@@ -73,7 +73,7 @@ ansibleで作って学ぶ ITインフラの基本
 #### - detection
 - [opt_vuls_server_install.yml](opt_vuls_server_install.yml) - 脆弱性検知ミドルのインストール
 
-#### - monitor
+#### - monitoring
 - [opt_alertmanager_container_deploy.yml](opt_alertmanager_container_deploy.yml) - アラート通知ミドルのインストール
 - [opt_node_exporter_install.yml](opt_node_exporter_install.yml) - メトリクス収集エージェントのインストール
 - [opt_prometheus_container_deploy.yml](opt_prometheus_container_deploy.yml) - メトリクス監視ミドルのインストール
