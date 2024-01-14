@@ -1,0 +1,147 @@
+---
+- name: serf setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    serf_version: "0.8.2"
+    serf_bind_host: "{{ inventory_hostname }}"
+    serf_bind_port: 7946
+    serf_join_hosts:
+    serf_role_name:
+    serf_event_handlers:
+
+  pre_tasks:
+    - name: get latest release
+      when: serf_version == "latest"
+      delegate_to: localhost
+      run_once: true
+      become: false
+      block:
+        - name: get serf latest version
+          ansible.builtin.uri:
+            url: "https://api.github.com/repos/hashicorp/serf/releases/latest"
+            method: GET
+            return_content: true
+            status_code: 200
+            body_format: json
+          register: latest_release
+          until: latest_release.status == 200
+          retries: 5
+
+        - name: set serf version to '{{ latest_release.json.tag_name[1:] }}'
+          ansible.builtin.set_fact:
+            serf_version: "{{ latest_release.json.tag_name[1:] }}"
+
+  tasks:
+    - name: install unzip for unarchive module
+      ansible.builtin.yum:
+        name: unzip
+
+    - name: detect serf is installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/serf
+      register: serf_bin
+
+    - name: download serf {{ serf_version }}
+      ansible.builtin.unarchive:
+        src: https://releases.hashicorp.com/serf/{{ serf_version }}/serf_{{ serf_version }}_linux_amd64.zip
+        dest: /tmp
+        remote_src: yes
+
+    - name: install serf
+      ansible.builtin.copy:
+        src: /tmp/serf
+        dest: /usr/local/bin/serf
+        mode: "0755"
+        remote_src: true
+
+    - name: create serf conf directory
+      ansible.builtin.file:
+        path: /etc/serf/config.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: copy serf config file
+      ansible.builtin.copy:
+        dest: /etc/serf/config.d/node.json
+        content: |
+          {
+          {% if serf_role_name %}
+            "tags": {
+              "role": "{{ serf_role_name }}"
+          {{ '  },' if serf_join_hosts or serf_event_handlers else '  }' }}
+          {% endif %}
+          {% if serf_join_hosts %}
+            "start_join": [
+          {% for host in serf_join_hosts %}{{ '    "'+hostvars[host].ansible_host+'"' if hostvars[host] is defined else host }}{{ ',\n' if loop.index < serf_join_hosts | length else '\n' }}{% endfor %}
+          {{ '  ],' if serf_event_handlers else '  ]' }}
+          {% endif %}
+          {% if serf_event_handlers %}
+            "event_handlers": [
+          {% for event in serf_event_handlers %}{{ '    "'+event+'"' }}{{ ',\n' if loop.index < serf_event_handlers | length else '\n' }}{% endfor %}
+            ]
+          {% endif %}
+          }
+        mode: '0755'
+      notify: restart serf service
+      when: serf_join_hosts or serf_role_name or serf_event_handlers
+
+    - name: copy serf service file
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/serf.service
+        content: |
+          [Unit]
+          Description=Serf agent
+          Requires=network-online.target
+          After=network-online.target
+
+          [Service]
+          Type=simple
+          #ExecStart=/usr/local/bin/serf agent -bind {{ serf_bind_host }}:{{ serf_bind_port }} -syslog -config-dir /etc/serf/config.d
+          ExecStart=/usr/local/bin/serf agent -bind {{ serf_bind_host }} -syslog -config-dir /etc/serf/config.d
+          KillSignal=SIGINT
+          Restart=always
+          User=nobody
+          Group=nobody
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+      notify: restart serf service
+
+    - name: daemon-reload
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: start serf service
+      ansible.builtin.service:
+        name: serf
+        state: started
+        enabled: yes
+
+  post_tasks:
+    - name: verify installed 'serf'
+      ansible.builtin.stat:
+        path: /usr/local/bin/serf
+      changed_when: false
+      register: result
+      failed_when: not result.stat.exists
+
+    - name: verify started serf service
+      ansible.builtin.service:
+        name: serf.service
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
+
+  handlers:
+    - name: restart serf service
+      service:
+        name: serf.service
+        state: restarted

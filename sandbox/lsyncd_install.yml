@@ -1,0 +1,168 @@
+---
+- name: lsyncd setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    lsyncd_master_hostname: "{{ ansible_play_hosts[0] }}"
+    lsyncd_master_identity_file: /root/.ssh/id_rsa_lsyncd 
+    lsyncd_slave_hosts: "{{ ansible_play_hosts[1:] }}"
+    lsyncd_slave_username: lsyncd
+      #lsyncd_sync_targets: []
+    lsyncd_sync_targets:
+      - source: /root/src/
+        target: /root/target/
+
+  tasks:
+    - name: install epel repository
+      yum:
+        name: epel-release
+
+    - name: install rsync package
+      yum:
+        name: rsync
+
+    - name: install lsyncd package
+      ansible.builtin.yum:
+        name: lsyncd
+      when: inventory_hostname == lsyncd_master_hostname
+
+    - block:
+      - name: generate ssh key pair
+        command: ssh-keygen -f {{ lsyncd_master_identity_file }} -q -N ""
+        args:
+          creates: '{{ lsyncd_master_identity_file }}'
+
+      - name: regist ssh public key
+        slurp: src={{ lsyncd_master_identity_file }}.pub
+        register: ssh_public_key
+      when: inventory_hostname == lsyncd_master_hostname
+
+    - block:
+      - name: create slave user for rsync
+        user:
+          name: '{{ lsyncd_slave_username }}'
+
+      - name: add ssh public key
+        authorized_key:
+          user: '{{ lsyncd_slave_username }}'
+          key: '{{ hostvars[lsyncd_master_hostname]["ssh_public_key"]["content"] | b64decode }}'
+
+      - name: add sudoers slave user
+        lineinfile:
+          path: '/etc/sudoers.d/{{ lsyncd_slave_username }}'
+          create: true
+          regexp: '^{{ lsyncd_slave_username }}'
+          line: '{{ lsyncd_slave_username }} ALL=(ALL) NOPASSWD: /usr/bin/rsync'
+          validate: '/usr/sbin/visudo -cf %s'
+      when: inventory_hostname != lsyncd_master_hostname
+
+    - block:
+      - name: copy lsyncd conf
+        ansible.builtin.copy:
+          dest: /etc/lsyncd.conf
+          content: |
+            ----
+            -- User configuration file for lsyncd.
+            --
+            -- Simple example for default rsync, but executing moves through on the target.
+            --
+            -- For more examples, see /usr/share/doc/lsyncd*/examples/
+            --
+            settings {
+              logfile="/var/log/lsyncd.log",
+              statusFile="/var/tmp/lsyncd.stat",
+              nodaemon=false,
+              insist=true
+            }
+            {% for item in lsyncd_sync_targets %}
+            {% for slave in lsyncd_slave_hosts %}
+            sync {
+              default.rsync,
+              source="{{ item.source }}",
+              target="{{ hostvars[slave].ansible_host if hostvars[slave].ansible_host is defined else slave }}:{{ item.target }}",
+              delay=1,
+              delete=true,
+              rsync={
+                archive=true,
+                compress = true,
+                rsh = "ssh -i {{ lsyncd_master_identity_file }} -l {{ lsyncd_slave_username }} -o StrictHostKeyChecking=no",
+                rsync_path = "sudo /usr/bin/rsync"
+              }
+            }
+            {% endfor %}
+            {% if lsyncd_slave_hosts | length == 0 %}
+            sync {
+              default.rsync,
+              source="{{ item.source }}",
+              target="{{ item.target }}",
+              delay=1,
+              delete=true,
+              rsync={
+                archive=true,
+                compress = true
+              }
+            }
+            {% endif %}
+            {% endfor %}
+          mode: 0644
+        notify: restart lsyncd service
+
+      - name: copy lsyncd service file
+        ansible.builtin.copy:
+          dest: /etc/systemd/system/lsyncd.service
+          content: |
+            [Unit]
+            Description=Live Syncing (Mirror) Daemon
+            After=network.target
+
+            [Service]
+            Type=simple
+            EnvironmentFile=-/etc/sysconfig/lsyncd
+            ExecStart=/usr/bin/lsyncd -nodaemon $LSYNCD_OPTIONS
+            StandardOutput=null
+
+            [Install]
+            WantedBy=multi-user.target
+          mode: 0644
+
+      - name: daemon reload
+        systemd: daemon_reload=yes
+
+      - name: start lsyncd service
+        ansible.builtin.service:
+          name: lsyncd.service
+          state: started
+          enabled: true
+      when: inventory_hostname == lsyncd_master_hostname
+
+  post_tasks:
+    - block:
+      - name: verify installed lsyncd package
+        ansible.builtin.shell:
+          cmd: set -o pipefail; yum list installed | grep lsyncd\.
+        changed_when: false
+        register: result
+        failed_when: result.rc != 0
+
+      - name: print installed version
+        ansible.builtin.debug:
+          var: result.stdout
+
+      - name: verify started lsyncd service
+        ansible.builtin.service:
+          name: lsyncd.service
+          state: started
+          enabled: true
+        check_mode: true
+        register: result
+        failed_when: result.changed
+      when: inventory_hostname == lsyncd_master_hostname
+
+  handlers:
+    - name: restart lsyncd service
+      when: inventory_hostname == lsyncd_master_hostname
+      ansible.builtin.service:
+        name: lsyncd.service
+        state: restarted

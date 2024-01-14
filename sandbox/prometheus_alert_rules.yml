@@ -1,0 +1,162 @@
+groups:
+- name: prometheus
+  rules:
+
+  - alert: PrometheusTargetMissing
+    expr: up == 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Prometheus target missing (instance {{ $labels.instance }})"
+      description: "A Prometheus target has disappeared. An exporter might be crashed.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+- name: node-exporter
+  rules:
+
+  - alert: HostHighCpuLoad
+    expr: (1 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])))) * 100 > 90
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host high CPU load (instance {{ $labels.instance }})"
+      description: "CPU load is > 90%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: HostHighCpuLoadAverage
+    expr: node_load1 / count(count(node_cpu_seconds_total) without (mode)) without (cpu) > 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host high CPU loadaverage (instance {{ $labels.instance }})"
+      description: "CPU loadaverage (normalize) is > 1\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: HostOutOfMemory
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host out of memory (instance {{ $labels.instance }})"
+      description: "Node memory is filling up (> 90%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: HostSwapIsFillingUp
+    expr: (1 - (node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes)) * 100 > 90
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host swap is filling up (instance {{ $labels.instance }})"
+      description: "Swap is filling up (> 90%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: HostOutOfDiskSpace
+    expr: (1 - (node_filesystem_avail_bytes{mountpoint="/", fstype!="/rootfs"} / node_filesystem_size_bytes{mountpoint="/", fstype!="/rootfs"})) * 100 > 90
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host out of disk space (instance {{ $labels.instance }})"
+      description: "Disk is almost full (> 90%)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: HostDiskWillFillIn6Hours
+    expr: predict_linear(node_filesystem_free_bytes{fstype!~"tmpfs"}[1h], 6 * 3600) < 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host disk will fill in 6 hours (instance {{ $labels.instance }})"
+      description: "Disk will fill in 6 hours at current write rate\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: HostUnusualDiskReadLatency
+    expr: rate(node_disk_read_time_seconds_total[1m]) / rate(node_disk_reads_completed_total[1m]) > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host unusual disk read latency (instance {{ $labels.instance }})"
+      description: "Disk latency is growing (read operations > 100ms)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: HostUnusualDiskWriteLatency
+    expr: rate(node_disk_write_time_seconds_total[1m]) / rate(node_disk_writes_completed_total[1m]) > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host unusual disk write latency (instance {{ $labels.instance }})"
+      description: "Disk latency is growing (write operations > 100ms)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: HostUnusualNetworkThroughputIn
+    expr: sum by (instance) (irate(node_network_receive_bytes_total[2m])) / 1024 / 1024 > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host unusual network throughput in (instance {{ $labels.instance }})"
+      description: "Host network interfaces are probably receiving too much data (> 100MB/s)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: HostUnusualNetworkThroughputOut
+    expr: sum by (instance) (irate(node_network_transmit_bytes_total[2m])) / 1024 / 1024 > 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host unusual network throughput out (instance {{ $labels.instance }})"
+      description: "Host network interfaces are probably sending too much data (> 100MB/s)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: HostNetworkDrops
+    expr: increase(node_network_receive_drop_total[5m]) + increase(node_network_transmit_drop_total[5m]) > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host Network Dropss (instance {{ $labels.instance }})"
+      description: "{{ $labels.instance }} interface {{ $labels.device }} has network drops.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: HostNetworkErrors
+    expr: increase(node_network_receive_errs_total[5m]) + increase(node_network_transmit_errs_total[5m]) > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Host Network Errors (instance {{ $labels.instance }})"
+      description: "{{ $labels.instance }} interface {{ $labels.device }} has network errors.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+- name: blackbox_exporter
+  rules:
+
+  - alert: BlackboxProbeFailed
+    expr: probe_success == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Blackbox probe failed (instance {{ $labels.instance }})"
+      description: "Probe failed\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: BlackboxProbeHttpFailure
+    expr: probe_http_status_code <= 199 OR probe_http_status_code >= 400
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Blackbox probe HTTP failure (instance {{ $labels.instance }})"
+      description: "HTTP status code is not 200-399\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: BlackboxProbeSlowHttp
+    expr: avg_over_time(probe_http_duration_seconds[1m]) > 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Blackbox probe slow HTTP (instance {{ $labels.instance }})"
+      description: "HTTP request took more than 1s\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+  - alert: BlackboxSslCertificateWillExpireSoon
+    expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 30
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Blackbox SSL certificate will expire soon (instance {{ $labels.instance }})"
+      description: "SSL certificate expires in 30 days\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PACKAGE_NAME='squid'
+PACKAGE_NAME=$1
 SERVICE_NAME=${PACKAGE_NAME}.service
 
 cat << EOS > ${PACKAGE_NAME}_install.yml
@@ -23,6 +23,14 @@ cat << EOS > ${PACKAGE_NAME}_install.yml
         state: started
         enabled: true
 
+    - name: copy $PACKAGE_NAME conf
+      ansible.builtin.copy:
+        dest: 
+        content: |
+
+        mode: "0644"
+      notify: restart $PACKAGE_NAME service
+
   post_tasks:
     - name: verify installed $PACKAGE_NAME package
       ansible.builtin.shell:
@@ -43,4 +51,10 @@ cat << EOS > ${PACKAGE_NAME}_install.yml
       check_mode: true
       register: result
       failed_when: result.changed
+
+  handlers:
+    - name: restart $PACKAGE_NAME service
+      service:
+        name: $SERVICE_NAME
+        state: restarted
 EOS
