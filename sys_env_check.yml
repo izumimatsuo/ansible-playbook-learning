@@ -20,6 +20,16 @@
       ansible.builtin.debug:
         var: result.stdout
 
+    - name: get selinux status
+      ansible.builtin.command:
+        cmd: getenforce
+      changed_when: false
+      register: result
+
+    - name: print selinux status
+      ansible.builtin.debug:
+        var: result.stdout
+
     - name: verify hostname '{{ env_hostname }}'
       ansible.builtin.command:
         cmd: hostname
