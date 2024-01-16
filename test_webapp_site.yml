@@ -47,25 +47,13 @@
         state: stopped
         timeout: 5
 
-    - name: verify access to uri 'http://{{ test_target }}'
+    - name: verify access to uri 'http://{{ test_target }}/guacamole'
       delegate_to: localhost
       ansible.builtin.uri:
-        url: "http://{{ test_target }}"
+        url: "http://{{ test_target }}/guacamole"
         return_content: true
         status_code: 200
         validate_certs: false
-      register: result
-      failed_when: "'Welcome to nginx' not in result.content"
-
-    - name: verify access to uri 'https://{{ test_target }}'
-      delegate_to: localhost
-      ansible.builtin.uri:
-        url: "https://{{ test_target }}"
-        return_content: true
-        status_code: 200
-        validate_certs: false
-      register: result
-      failed_when: "'Welcome to nginx' not in result.content"
 
     - name: verify access to uri 'https://{{ test_target }}/guacamole'
       delegate_to: localhost

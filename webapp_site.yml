@@ -14,8 +14,8 @@
 #
 - name: play nginx install
   import_playbook: nginx_install.yml
-- name: play nginx virtual server config
-  import_playbook: nginx_vserver_config.yml
+- name: play nginx proxy config
+  import_playbook: nginx_proxy_config.yml
 
 #
 # Application tier
