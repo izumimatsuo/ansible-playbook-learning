@@ -13,13 +13,9 @@
         name: ca-certificates
         state: latest
 
-    - name: update rpm-gpg-key
-      ansible.builtin.rpm_key:
-        key: https://download.postgresql.org/pub/repos/yum/RPM-GPG-KEY-PGDG
-
-    - name: install epel repository
-      ansible.builtin.yum:
-        name: epel-release
+          #    - name: update rpm-gpg-key
+          #      ansible.builtin.rpm_key:
+          #        key: https://download.postgresql.org/pub/repos/yum/keys/RPM-GPG-KEY-PGDG
 
     - name: check releasever
       ansible.builtin.shell:
@@ -36,6 +32,7 @@
     - name: add postgresql repository
       ansible.builtin.yum:
         name: "https://download.postgresql.org/pub/repos/yum/reporpms/EL-{{ releasever }}-x86_64/pgdg-redhat-repo-latest.noarch.rpm"
+        disable_gpg_check: true
 
     - name: disabled default module
       when: releasever != "7"
