@@ -1,5 +1,5 @@
 ---
-- name: postgresql db configurarion
+- name: guacamole database configurarion
   hosts: all
   become: true
   gather_facts: false

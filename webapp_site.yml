@@ -22,16 +22,20 @@
 #
 - name: play docker install
   import_playbook: docker_install.yml
-- name: play docker container deploy
-  import_playbook: docker_container_deploy.yml
 
 #
 # Database tier
 #
 - name: play postgresql install
   import_playbook: postgresql_install.yml
-- name: play postgresql database setup
-  import_playbook: postgresql_initdb_config.yml
+
+#
+# Application deploy
+#
+- name: play guacamole container deploy
+  import_playbook: webapp_guacamole_container_deploy.yml
+- name: play guacamole database setup
+  import_playbook: webapp_guacamole_database_config.yml
 
 #
 # Integration test

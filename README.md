@@ -28,7 +28,6 @@ ansibleで作って学ぶ ITインフラの基本
 ### Docker
 
 - [docker_cluster.yml](docker_cluster.yml) - Appサーバークラスタを構築(docker-swarm)
-- [docker_container_deploy.yml](docker_container_deploy.yml) - Appコンテナデプロイ(guacamole)
 - [docker_install.yml](docker_install.yml) - docker-ceのインストール
 - [docker_swarm_config.yml](docker_swarm_config.yml) - クラスタ化の設定
 - [test_docker_cluster.yml](test_docker_cluster.yml) - Appサーバークラスタのフェイルオーバーテスト
@@ -36,13 +35,14 @@ ansibleで作って学ぶ ITインフラの基本
 ### Postgresql
 
 - [postgresql_cluster.yml](postgresql_cluster.yml) - DBサーバークラスタを構築(postgresql)
-- [postgresql_initdb_config.yml](postgresql_initdb_config.yml) - DB作成(guacamole)
 - [postgresql_install.yml](postgresql_install.yml) - postgresqlのインストール
 - [postgresql_replication_config.yml](postgresql_replication_config.yml) - クラスタツール(repmgr)のインストールとstreamingレプリケーションの設定
 
 ### Web application site
 
-- [webapp_site.yml](webapp_site.yml) - Web3層アプリケーションの構築(guacamole)
+- [webapp_guacamole_container_deploy.yml](webapp_guacamole_container_deploy.yml) - Guacamoleコンテナデプロイ
+- [webapp_guacamole_database_config.yml](webapp_guacamole_database_config.yml) - Guacamole DB設定
+- [webapp_site.yml](webapp_site.yml) - Web3層アプリケーションの構築(Guacamole)
 - [test_webapp_site.yml](test_webapp_site.yml) - 構築したWeb3層アプリケーションのテスト
 
 ### Security (IDS/IPS)

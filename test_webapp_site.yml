@@ -1,5 +1,5 @@
 ---
-- name: test webapp server
+- name: test webapp site
   hosts: all
   gather_facts: false
 
