@@ -1,0 +1,107 @@
+---
+- name: consul setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    consul_server_count: 1
+    consul_server_hosts: "{{ (ansible_play_hosts | sort)[:consul_server_count] }}"
+    consul_leader_host: "{{ consul_server_hosts | first }}"
+    consul_bind_addr: "eth1"
+
+  tasks:
+    - name: get ip address
+      ansible.builtin.shell:
+        cmd: "ip address show dev {{ consul_bind_addr }} | grep -oP '(?<=inet )\\S+(?=/)'"
+      changed_when: false
+      register: result
+
+    - name: bind address as fact
+      ansible.builtin.set_fact:
+        consul_bind_addr: "{{ result.stdout }}"
+
+    - name: add Hashicorp repository
+      ansible.builtin.yum_repository:
+        name: Hashicorp-Stable
+        description: Hashicorp stable repo
+        baseurl: https://rpm.releases.hashicorp.com/RHEL/$releasever/$basearch/stable
+        gpgkey: https://rpm.releases.hashicorp.com/gpg
+        gpgcheck: true
+
+    - name: install consul package
+      ansible.builtin.yum:
+        name: consul
+
+    - name: update consul hcl
+      ansible.builtin.blockinfile:
+        path: /etc/consul.d/consul.hcl
+        backup: true
+        block: |
+          {% if inventory_hostname in consul_server_hosts -%}
+          server = true
+          {% endif %}
+          {% if inventory_hostname == consul_leader_host -%}
+          bootstrap_expect={{ consul_server_count }}
+          {% else %}
+          retry_join = ["{{ hostvars[consul_leader_host].consul_bind_addr }}"]
+          {% endif %}
+          bind_addr = "{{ consul_bind_addr }}"
+      notify: restart consul service
+
+    - name: patch consul service unit
+      ansible.builtin.lineinfile:
+        path: /usr/lib/systemd/system/consul.service
+        regexp: "^Type="
+        line: "Type=simple"
+        backup: true
+
+    - name: daemon-reload
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: start consul service
+      ansible.builtin.service:
+        name: consul.service
+        state: started
+        enabled: true
+
+  post_tasks:
+    - name: verify installed consul package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep consul\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify started consul service
+      ansible.builtin.service:
+        name: consul.service
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
+
+    - name: verify consul leader
+      when: inventory_hostname == consul_leader_host
+      ansible.builtin.command:
+        cmd: consul members
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print consul members
+      when: inventory_hostname == consul_leader_host
+      ansible.builtin.debug:
+        var: result.stdout_lines
+
+  handlers:
+    - name: restart consul service
+      service:
+        name: consul.service
+        state: restarted
