@@ -1,0 +1,65 @@
+---
+- name: user account configration
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    # ssh-keygen -t ed25519 -f .ssh/id_ed25519 -C "testuser"
+    users:
+      - name: "testuser"
+        public_key: "../.ssh/id_ed25519.pub"
+        sudoers: false
+      - name: "testadmin"
+        public_key: "../.ssh/id_ed25519.pub"
+        sudoers: true
+    user_group: "maintainer"
+    admin_group: "adminuser"
+    enable_two_step_auth: false
+
+  tasks:
+    - name: create user group
+      ansible.builtin.group:
+        name: "{{ user_group }}"
+
+    - name: create admin group
+      ansible.builtin.group:
+        name: "{{ admin_group }}"
+
+    - name: add sudoers admin group
+      ansible.builtin.lineinfile:
+        path: "/etc/sudoers.d/{{ admin_group }}"
+        create: true
+        regexp: "^%{{ admin_group }}"
+        line: "%{{ admin_group }} ALL=(ALL) NOPASSWD: ALL"
+        validate: "/usr/sbin/visudo -cf %s"
+
+    - name: create users
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        group: "{{ user_group }}"
+        groups: "{{ user_group }}{% if item.sudoers is defined and item.sudoers %},{{ admin_group }}{% endif %}"
+      register: user_add
+      loop: "{{ users }}"
+
+    - name: add public key
+      ansible.builtin.authorized_key:
+        user: "{{ item.name }}"
+        key: "{{ lookup( 'url' if item.public_key.startswith('http') else 'file', item.public_key) }}"
+      loop: "{{ users }}"
+
+    - name: get current users list
+      ansible.builtin.shell:
+        cmd: "set -o pipefail; getent group {{ user_group }} | cut -d: -f4 | tr ',' '\n'"
+      register: current_users
+      changed_when: false
+
+    - name: remove invalid users
+      ansible.builtin.user:
+        name: "{{ item }}"
+        state: absent
+        remove: true
+      loop: "{{ current_users.stdout_lines | difference(users | map(attribute='name') | list) }}"
+
+  post_tasks:
+
