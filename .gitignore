@@ -1,6 +1,7 @@
 !.gitignore
 /.vagrant/
 /.venv/
+/.ssh/
 /playground/
 .DS_Store
 
