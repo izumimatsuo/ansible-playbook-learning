@@ -1,0 +1,95 @@
+---
+- name: consul dns configration
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    dns_upstream:
+      - nameserver 8.8.8.8
+      - nameserver 8.8.4.4
+
+  tasks:
+    - name: install dnsmasq package
+      ansible.builtin.yum:
+        name: dnsmasq, bind-utils
+
+    - name: start dnsmasq service
+      ansible.builtin.service:
+        name: dnsmasq.service
+        state: started
+        enabled: true
+
+    - name: update dnsmasq conf
+      ansible.builtin.lineinfile:
+        path: /etc/dnsmasq.conf
+        regexp: "^{{ item }} "
+        insertafter: "^#{{ item }} "
+        line: "{{ item }}"
+        backup: true
+      loop:
+        - strict-order
+        - domain-needed
+        - bogus-priv
+      notify: restart dnsmasq service
+
+    - name: copy consul dns conf
+      ansible.builtin.copy:
+        dest: /etc/dnsmasq.d/10-consul
+        content: |
+          server=/consul/127.0.0.1#8600
+        mode: "0644"
+      notify: restart dnsmasq service
+
+    - name: update NetworkManager.conf (dns=none)
+      ansible.builtin.lineinfile:
+        path: /etc/NetworkManager/NetworkManager.conf
+        regexp: "^dns="
+        insertafter: "^\\[main\\]"
+        line: "dns=none"
+        backup: true
+
+    - name: update resolv.conf
+      ansible.builtin.copy:
+        dest: /etc/resolv.conf
+        content: |
+          nameserver 127.0.0.1
+          {% for item in dns_upstream -%}
+          {{ item }}
+          {% endfor %}
+        backup: true
+        mode: "0644"
+
+  post_tasks:
+    - name: verify installed dnsmasq package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep dnsmasq\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+    - name: verify started dnsmasq service
+      ansible.builtin.service:
+        name: dnsmasq.service
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
+
+    - name: verify lookup dns entory
+      ansible.builtin.shell:
+        cmd: dig {{ inventory_hostname }}.node.consul | grep "^{{ inventory_hostname }}.node.consul"
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+  handlers:
+    - name: restart dnsmasq service
+      ansible.builtin.service:
+        name: dnsmasq.service
+        state: restarted

@@ -1,0 +1,41 @@
+---
+- name: dns resolver configration
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    dns_resolver:
+      - nameserver 8.8.8.8
+      - nameserver 8.8.4.4
+
+  tasks:
+    - name: install bind-utils package
+      ansible.builtin.yum:
+        name: bind-utils
+
+    - name: update NetworkManager.conf (dns=none)
+      ansible.builtin.lineinfile:
+        path: /etc/NetworkManager/NetworkManager.conf
+        regexp: "^dns="
+        insertafter: "^\\[main\\]"
+        line: "dns=none"
+        backup: true
+
+    - name: update resolv.conf
+      ansible.builtin.copy:
+        dest: /etc/resolv.conf
+        content: |
+          {% for item in dns_resolver -%}
+          {{ item }}
+          {% endfor %}
+        backup: true
+        mode: "0644"
+
+  post_tasks:
+    - name: verify lookup dns entory
+      ansible.builtin.shell:
+        cmd: dig www.google.com | grep "^www.google.com"
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0

@@ -1,5 +1,5 @@
 ---
-- name: consul setup
+- name: consul agent setup
   hosts: all
   become: true
   gather_facts: false
@@ -42,7 +42,7 @@
           server = true
           {% endif %}
           {% if inventory_hostname == consul_leader_host -%}
-          bootstrap_expect={{ consul_server_count }}
+          bootstrap_expect = {{ consul_server_count }}
           {% else %}
           retry_join = ["{{ hostvars[consul_leader_host].consul_bind_addr }}"]
           {% endif %}
@@ -52,7 +52,7 @@
     - name: patch consul service unit
       ansible.builtin.lineinfile:
         path: /usr/lib/systemd/system/consul.service
-        regexp: "^Type="
+        regexp: "^Type=notify"
         line: "Type=simple"
         backup: true
 
