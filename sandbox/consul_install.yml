@@ -47,6 +47,7 @@
           retry_join = ["{{ hostvars[consul_leader_host].consul_bind_addr }}"]
           {% endif %}
           bind_addr = "{{ consul_bind_addr }}"
+          enable_local_script_checks = true
       notify: restart consul service
 
     - name: patch consul service unit
@@ -54,6 +55,14 @@
         path: /usr/lib/systemd/system/consul.service
         regexp: "^Type=notify"
         line: "Type=simple"
+        backup: true
+
+    - name: patch consul service unit
+      ansible.builtin.lineinfile:
+        path: /usr/lib/systemd/system/consul.service
+        regexp: "^ExecStartPre="
+        insertbefore: "^ExecStart="
+        line: "ExecStartPre=/usr/bin/sleep 15"
         backup: true
 
     - name: daemon-reload

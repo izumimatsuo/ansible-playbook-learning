@@ -1,0 +1,57 @@
+---
+- name: docker registry setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: install python-pip packages
+      ansible.builtin.yum:
+        name:
+          - python3-pip
+
+    - name: install docker python package
+      ansible.builtin.pip:
+        name:
+          - docker
+
+  tasks:
+    - name: start registry backend container
+      community.docker.docker_container:
+        name: backend
+        hostname: backend
+        image: registry:2
+        restart_policy: always
+        env:
+          REGISTRY_STORAGE_DELETE_ENABLED: "true"
+        ports:
+          - "5000:5000"
+
+    - name: start registry frontend container
+      community.docker.docker_container:
+        name: frontend
+        hostname: frontend
+        image: ekazakov/docker-registry-frontend
+        restart_policy: always
+        env:
+          ENV_DOCKER_REGISTRY_HOST: backend
+          ENV_DOCKER_REGISTRY_PORT: "5000"
+        ports:
+          - "5080:80"
+        links:
+          - backend
+
+            #  post_tasks:
+            #    - name: verify started guacd contailner
+            #      ansible.builtin.command:
+            #        cmd: docker container ls
+            #      changed_when: false
+            #      register: result
+            #      failed_when: "'guacamole/guacd' not in result.stdout"
+            #
+            #    - name: verify started guacamole contailner
+            #      ansible.builtin.command:
+            #        cmd: docker container ls
+            #      changed_when: false
+            #      register: result
+            #      failed_when: "'guacamole/guacamole' not in result.stdout"

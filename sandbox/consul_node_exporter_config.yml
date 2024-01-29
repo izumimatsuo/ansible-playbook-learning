@@ -1,0 +1,35 @@
+---
+- name: node_exporter consul configration
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+
+  tasks:
+    - name: copy node_exporter config
+      ansible.builtin.copy:
+        dest: /etc/consul.d/node_exporter.json
+        content: |
+          {
+            "service": {
+              "name": "node_exporter",
+              "tags": ["node_exporter"],
+              "port": 9100,
+              "check": {
+                "http": "http://localhost:9100/metrics",
+                "interval": "15s",
+                "timeout": "5s"
+              }
+            }
+          }
+        mode: "0644"
+      notify: restart consul service
+
+  post_tasks:
+
+  handlers:
+    - name: restart consul service
+      ansible.builtin.service:
+        name: consul.service
+        state: restarted

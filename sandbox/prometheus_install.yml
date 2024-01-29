@@ -1,0 +1,222 @@
+---
+- name: prometheus setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    prometheus_version: "latest"
+
+  pre_tasks:
+    - name: get latest release
+      when: prometheus_version == "latest"
+      delegate_to: localhost
+      run_once: true
+      become: false
+      block:
+        - name: get node_exporter latest version
+          ansible.builtin.uri:
+            url: "https://api.github.com/repos/prometheus/prometheus/releases/latest"
+            method: GET
+            return_content: true
+            status_code: 200
+            body_format: json
+          register: latest_release
+          until: latest_release.status == 200
+          retries: 5
+
+        - name: set prometheus version to '{{ latest_release.json.tag_name[1:] }}'
+          ansible.builtin.set_fact:
+            prometheus_version: "{{ latest_release.json.tag_name[1:] }}"
+
+  tasks:
+    - name: create prometheus user
+      ansible.builtin.user:
+        name: prometheus
+        createhome: false
+        shell: /sbin/nologin
+
+    - name: download prometheus '{{ prometheus_version }}'
+      ansible.builtin.unarchive:
+        src: https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-amd64.tar.gz
+        dest: /tmp
+        remote_src: true
+
+    - name: install prometheus
+      ansible.builtin.copy:
+        src: /tmp/prometheus-{{ prometheus_version }}.linux-amd64/prometheus
+        dest: /usr/local/bin/prometheus
+        mode: "0755"
+        remote_src: true
+
+    - name: create data directory
+      ansible.builtin.file:
+        path: /var/lib/prometheus/data
+        state: directory
+        owner: prometheus
+        group: prometheus
+        mode: '0744'
+        recurse: true
+
+    - name: create conf directory
+      ansible.builtin.file:
+        path: /etc/prometheus
+        state: directory
+        owner: root
+        group: root
+        mode: '0744'
+
+    - name: copy prometheus conf
+      ansible.builtin.copy:
+        backup: true
+        dest: /etc/prometheus/prometheus.yml
+        content: |
+          global:
+            scrape_interval:     15s
+            evaluation_interval: 15s
+
+          rule_files:
+            - alert_rules.yml
+
+          alerting:
+            alertmanagers:
+              - scheme: http
+                static_configs:
+                - targets:
+                  - localhost:9093
+
+          scrape_configs:
+            - job_name: prometheus
+              static_configs:
+                - targets:
+                  - localhost:9090
+
+            - job_name: node
+              #              static_configs:
+              #                - targets:
+              #                  - localhost:9100
+              consul_sd_configs:
+                - services:
+                  - node_exporter
+              relabel_configs:
+                - source_labels: [__meta_consul_address, __meta_consul_service_port]
+                  separator: ':'
+                  target_label: __address__
+                - source_labels: [__meta_consul_node]
+                  target_label: instance
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart prometheus service
+
+    - name: copy alert rules
+      ansible.builtin.copy:
+        backup: true
+        dest: /etc/prometheus/alert_rules.yml
+        content: |
+          groups:
+          - name: node-exporter
+            rules:
+            - alert: instance_down
+              expr: up == 0
+              for: 1m
+              labels:
+                severity: critical
+              annotations:
+                summary: "{% raw %}Instance {{ $labels.instance }} down{% endraw %}"
+                description: "{% raw %}{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minutes.{% endraw %}"
+
+          - name: blackbox-exporter
+            rules:
+            - alert: service_down
+              expr: probe_success == 0
+              for: 1m
+              labels:
+                severity: critical
+              annotations:
+                summary: "{% raw %}Service {{ $labels.instance }} down{% endraw %}"
+                description: "{% raw %}{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minutes.{% endraw %}"
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart prometheus service
+
+    - name: update directory permissions
+      ansible.builtin.file:
+        path: /etc/prometheus
+        state: directory
+        owner: root
+        group: prometheus
+        recurse: true
+
+    - name: copy prometheus service file
+      ansible.builtin.copy:
+        backup: true
+        dest: /etc/systemd/system/prometheus.service
+        content: |
+          [Unit]
+          Description=Prometheus Monitoring Server
+          After=network-online.target
+
+          [Service]
+          Restart=always
+          #User=prometheus
+          ExecStart=/usr/local/bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/var/lib/prometheus/data
+          ExecStop=/bin/kill -TERM ${MAINPID}
+          ExecReload=/bin/kill -HUP ${MAINPID}
+          TimeoutStopSec=20s
+          SendSIGKILL=no
+
+          [Install]
+          WantedBy=multi-user.target
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: daemon-reload
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: start prometheus service
+      ansible.builtin.service:
+        name: prometheus.service
+        state: started
+        enabled: true
+
+  post_tasks:
+    - name: verify add 'prometheus' user
+      ansible.builtin.user:
+        name: prometheus
+        createhome: false
+        shell: /sbin/nologin
+      check_mode: true
+      register: result
+      failed_when: result.changed
+
+    - name: verify installed 'prometheus'
+      ansible.builtin.stat:
+        path: /usr/local/bin/prometheus
+      changed_when: false
+      register: result
+      failed_when: not result.stat.exists
+
+    - name: verify started 'prometheus'
+      ansible.builtin.service:
+        name: prometheus.service
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
+
+    - name: verify listen port '9090'
+      ansible.builtin.wait_for:
+        port: 9090
+        state: started
+        timeout: 5
+
+  handlers:
+    - name: restart prometheus service
+      ansible.builtin.service:
+        name: prometheus.service
+        state: restarted
