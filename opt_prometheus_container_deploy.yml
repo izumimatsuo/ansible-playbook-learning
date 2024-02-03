@@ -42,13 +42,13 @@
           args:
             creates: /usr/bin/pip
 
+  tasks:
     - name: install docker python package
       ansible.builtin.pip:
         name:
           - docker
           - docker-compose
 
-  tasks:
     - name: create conf directory
       ansible.builtin.file:
         path: /etc/prometheus
@@ -74,7 +74,7 @@
               - scheme: http
                 static_configs:
                 - targets:
-                  - 192.168.56.11:9093
+                  - alertmanager:9093
 
           scrape_configs:
             - job_name: prometheus
@@ -82,10 +82,35 @@
                 - targets:
                   - localhost:9090
 
-            - job_name: node
+            - job_name: alertmanager
               static_configs:
                 - targets:
-                  - 192.168.56.11:9100
+                  - alertmanager:9093
+
+            - job_name: blackbox_exporter
+              metrics_path: /probe
+              static_configs:
+                - labels:
+                    module: icmp
+                  targets:
+                    - 192.168.56.11
+                    - 192.168.56.12
+                - labels:
+                    module: http_2xx
+                  targets:
+                    - 192.168.56.11:9093/metrics
+              relabel_configs:
+                - source_labels: [module]
+                  target_label: __param_module
+                - source_labels: [__address__]
+                  target_label: __param_target
+                - source_labels: [__param_target]
+                  target_label: instance
+                - target_label: __address__
+                  replacement: blackbox_exporter:9115
+
+            - job_name: node_exporter
+
         owner: root
         group: root
         mode: "0644"
@@ -140,15 +165,24 @@
                 - prometheus_data:/prometheus
               ports:
                 - 9090:9090
+              networks:
+                - monitoring
               restart: always
 
-                #            blackbox-exporter:
-                #              image: "{{ blackbox_exporter_container_image }}"
-                #              container_name: blackbox-exporter
-                #              restart: always
+            blackbox-exporter:
+              image: "{{ blackbox_exporter_container_image }}"
+              container_name: blackbox_exporter
+              networks:
+                - monitoring
+              restart: always
 
           volumes:
             prometheus_data:
+
+          networks:
+            monitoring:
+              driver: bridge
+              internal: false
         owner: root
         group: root
         mode: "0644"
@@ -165,6 +199,13 @@
       changed_when: false
       register: result
       failed_when: "'prom/prometheus' not in result.stdout"
+
+    - name: verify started blackbox_exporter contailner
+      ansible.builtin.command:
+        cmd: docker container ls
+      changed_when: false
+      register: result
+      failed_when: "'prom/blackbox-exporter' not in result.stdout"
 
   handlers:
     - name: restart containers

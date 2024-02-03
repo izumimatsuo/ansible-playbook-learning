@@ -5,6 +5,7 @@
   gather_facts: false
 
   vars:
+    alertmanager_use_mailcatcher: true
     alertmanager_container_image: "prom/alertmanager"
 
   pre_tasks:
@@ -41,13 +42,13 @@
           args:
             creates: /usr/bin/pip
 
+  tasks:
     - name: install docker python package
       ansible.builtin.pip:
         name:
           - docker
           - docker-compose
 
-  tasks:
     - name: create conf directory
       ansible.builtin.file:
         path: /etc/alertmanager
@@ -104,19 +105,30 @@
               container_name: alertmanager
               volumes:
                 - /etc/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+              networks:
+                - monitoring
               ports:
                 - 9093:9093
               restart: always
+            {% if alertmanager_use_mailcatcher %}
 
             mail:
               image: schickling/mailcatcher
               container_name: mail
+              networks:
+                - monitoring
               ports:
                 - 1025:1025
                 - 1080:1080
+            {% endif %}
 
           volumes:
             prometheus_data:
+
+          networks:
+            monitoring:
+              name: prometheus_monitoring
+              external: true
         owner: root
         group: root
         mode: "0644"
