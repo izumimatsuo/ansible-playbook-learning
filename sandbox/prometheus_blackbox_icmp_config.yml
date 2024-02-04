@@ -1,0 +1,43 @@
+---
+- name: blackbox icmp config
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    sys_net_dev: "eth1"
+    sys_etc_hosts: "{{ ansible_play_hosts | sort }}"
+
+  tasks:
+    - name: get ip address
+      ansible.builtin.shell:
+        cmd: "ip address show dev {{ sys_net_dev }} | grep -oP '(?<=inet )\\S+(?=/)'"
+      changed_when: false
+      register: result
+
+    - name: ip address as fact
+      ansible.builtin.set_fact:
+        ipv4_address: "{{ result.stdout }}"
+
+    - name: check targeets directory
+      ansible.builtin.stat:
+        path: /etc/prometheus/targets
+      register: targets
+
+    - name: update targets list
+      when: targets.stat.exists
+      ansible.builtin.copy:
+        dest: /etc/prometheus/targets/blackbox_icmp.yml
+        content: |
+          - labels:
+              module: icmp
+            targets:
+            {% for item in sys_etc_hosts %}
+            - {{ hostvars[item].ipv4_address }}
+            {% endfor %}
+        backup: true
+        owner: root
+        group: root
+        mode: "0644"
+
+  post_tasks:
