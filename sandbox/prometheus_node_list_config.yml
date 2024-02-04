@@ -1,5 +1,5 @@
 ---
-- name: blackbox icmp config
+- name: node-exporter config
   hosts: all
   become: true
   gather_facts: false
@@ -27,10 +27,10 @@
     - name: update targets list
       when: targets.stat.exists
       ansible.builtin.copy:
-        dest: /etc/prometheus/targets/blackbox_icmp.yml
+        dest: /etc/prometheus/targets/node_list.yml
         content: |
           - labels:
-              module: icmp
+              port: 9100
             targets:
             {% for item in sys_etc_hosts %}
             - {{ hostvars[item].ipv4_address }}#{{ item }}
