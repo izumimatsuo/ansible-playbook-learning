@@ -89,16 +89,9 @@
 
             - job_name: blackbox_exporter
               metrics_path: /probe
-              static_configs:
-                - labels:
-                    module: icmp
-                  targets:
-                    - 192.168.56.11
-                    - 192.168.56.12
-                - labels:
-                    module: http_2xx
-                  targets:
-                    - 192.168.56.11:9093/metrics
+              file_sd_configs:
+                - files:
+                  - /etc/prometheus/targets/blackbox_*.yml
               relabel_configs:
                 - source_labels: [module]
                   target_label: __param_module
@@ -122,27 +115,27 @@
         dest: /etc/prometheus/alert_rules.yml
         content: |
           groups:
-          - name: node-exporter
+          - name: prometheus Target
             rules:
-            - alert: instance_down
+            - alert: PrometheusTargetMissing
               expr: up == 0
-              for: 1m
+              for: 5m
               labels:
-                severity: critical
+                severity: warning
               annotations:
-                summary: "{% raw %}Instance {{ $labels.instance }} down{% endraw %}"
-                description: "{% raw %}{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minutes.{% endraw %}"
+                summary: "{% raw %}Prometheus target missing (instance {{ $labels.instance }}){% endraw %}"
+                description: "{% raw %}A Prometheus target has disappeared. An exporter might be crashed.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}{% endraw %}"
 
-          - name: blackbox-exporter
+          - name: blackbox_exporter Probe
             rules:
-            - alert: service_down
+            - alert: BlackboxProbeFailed
               expr: probe_success == 0
               for: 1m
               labels:
                 severity: critical
               annotations:
-                summary: "{% raw %}Service {{ $labels.instance }} down{% endraw %}"
-                description: "{% raw %}{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minutes.{% endraw %}"
+                summary: "{% raw %}Blackbox probe failed (instance {{ $labels.instance }}){% endraw %}"
+                description: "{% raw %}Probe failed\\n  VALUE = {{ $value }}\\n  LABELS: {{ $labels }}{% endraw %}"
         owner: root
         group: root
         mode: "0644"
@@ -162,6 +155,7 @@
               volumes:
                 - /etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
                 - /etc/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml
+                - /etc/prometheus/targets:/etc/prometheus/targets
                 - prometheus_data:/prometheus
               ports:
                 - 9090:9090
