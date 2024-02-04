@@ -96,9 +96,17 @@
                 - source_labels: [module]
                   target_label: __param_module
                 - source_labels: [__address__]
+                  regex: "([^#]+).*"
                   target_label: __param_target
-                - source_labels: [__param_target]
+                  replacement: "${1}"
+                - source_labels: [__address__]
+                  regex: "(.+)"
                   target_label: instance
+                  replacement: "${1}"
+                - source_labels: [instance]
+                  regex: ".*#([^#]+)"
+                  target_label: instance
+                  replacement: "${1}"
                 - target_label: __address__
                   replacement: blackbox_exporter:9115
 
