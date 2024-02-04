@@ -111,7 +111,25 @@
                   replacement: blackbox_exporter:9115
 
             - job_name: node_exporter
-
+              file_sd_configs:
+                - files:
+                  - /etc/prometheus/targets/node_*.yml
+              relabel_configs:
+                - source_labels: [__address__]
+                  regex: "(.+)"
+                  target_label: instance
+                  replacement: "${1}"
+                - source_labels: [instance]
+                  regex: ".*#([^#]+)"
+                  target_label: instance
+                  replacement: "${1}"
+                - source_labels: [__address__]
+                  regex: "([^#]+).*"
+                  target_label: __address__
+                  replacement: "${1}"
+                - source_labels: [__address__,port]
+                  separator: ":"
+                  target_label: __address__
         owner: root
         group: root
         mode: "0644"
@@ -143,7 +161,7 @@
                 severity: critical
               annotations:
                 summary: "{% raw %}Blackbox probe failed (instance {{ $labels.instance }}){% endraw %}"
-                description: "{% raw %}Probe failed\\n  VALUE = {{ $value }}\\n  LABELS: {{ $labels }}{% endraw %}"
+                description: "{% raw %}Probe failed.\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}{% endraw %}"
         owner: root
         group: root
         mode: "0644"
