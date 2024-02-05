@@ -1,0 +1,33 @@
+---
+- name: blackbox http config
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    blackbox_http_targets:
+      - http://192.168.56.12:9093/metrics
+
+  tasks:
+    - name: check targeets directory
+      ansible.builtin.stat:
+        path: /etc/prometheus/targets
+      register: targets
+
+    - name: update targets list
+      when: targets.stat.exists
+      ansible.builtin.copy:
+        dest: /etc/prometheus/targets/blackbox_http.yml
+        content: |
+          - labels:
+              module: http_2xx
+            targets:
+            {% for item in blackbox_http_targets %}
+            - {{ item }}
+            {% endfor %}
+        backup: true
+        owner: root
+        group: root
+        mode: "0644"
+
+  post_tasks:

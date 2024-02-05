@@ -1,0 +1,61 @@
+---
+- name: consul-template setup
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+
+  tasks:
+    - name: add Hashicorp repository
+      ansible.builtin.yum_repository:
+        name: Hashicorp-Stable
+        description: Hashicorp stable repo
+        baseurl: https://rpm.releases.hashicorp.com/RHEL/$releasever/$basearch/stable
+        gpgkey: https://rpm.releases.hashicorp.com/gpg
+        gpgcheck: true
+
+    - name: install consul-template package
+      ansible.builtin.yum:
+        name: consul-template
+
+          #    - name: start consul-template service
+          #      ansible.builtin.service:
+          #        name: consul-template.service
+          #        state: started
+          #        enabled: true
+
+          #    - name: copy consul-template conf
+          #      ansible.builtin.copy:
+          #        dest: 
+          #        content: |
+          #
+          #        mode: "0644"
+          #      notify: restart consul-template service
+
+  post_tasks:
+    - name: verify installed consul-template package
+      ansible.builtin.shell:
+        cmd: set -o pipefail; yum list installed | grep consul-template\.
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print installed version
+      ansible.builtin.debug:
+        var: result.stdout
+
+          #    - name: verify started consul-template service
+          #      ansible.builtin.service:
+          #        name: consul-template.service
+          #        state: started
+          #        enabled: true
+          #      check_mode: true
+          #      register: result
+          #      failed_when: result.changed
+
+  handlers:
+    - name: restart consul-template service
+      service:
+        name: consul-template.service
+        state: restarted
