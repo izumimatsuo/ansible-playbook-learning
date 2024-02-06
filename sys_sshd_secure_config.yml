@@ -1,0 +1,48 @@
+---
+- name: sshd configration
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: set sshd secure configration
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^{{ item.split(' ')[0] }} "
+        insertafter: "^#{{ item.split(' ')[0] }} "
+        line: "{{ item }}"
+        backup: true
+        validate: "sshd -tf %s"
+      loop:
+        - PubkeyAuthentication yes
+        - PermitRootLogin no
+        - PasswordAuthentication no
+        - PermitEmptyPasswords no
+        - ChallengeResponseAuthentication no
+        - KerberosAuthentication no
+        - GSSAPIAuthentication no
+        - X11Forwarding no
+      notify: restart sshd service
+
+  post_tasks:
+    - name: verify sshd config
+      ansible.builtin.wait_for:
+        path: /etc/ssh/sshd_config
+        search_regex: "^{{ item }}$"
+        state: present
+        timeout: 5
+      loop:
+        - PubkeyAuthentication yes
+        - PermitRootLogin no
+        - PasswordAuthentication no
+        - PermitEmptyPasswords no
+        - ChallengeResponseAuthentication no
+        - KerberosAuthentication no
+        - GSSAPIAuthentication no
+        - X11Forwarding no
+
+  handlers:
+    - name: restart sshd service
+      ansible.builtin.service:
+        name: sshd.service
+        state: restarted
