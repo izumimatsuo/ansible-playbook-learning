@@ -4,6 +4,9 @@
   become: true
   gather_facts: false
 
+  vars:
+    docker_version:
+
   pre_tasks:
     - name: uninstall old versions
       ansible.builtin.yum:
@@ -30,8 +33,8 @@
     - name: install docker-ce packages
       ansible.builtin.yum:
         name:
-          - docker-ce
-          - docker-ce-cli
+          - "docker-ce{{ '' if docker_version == None else '-' + docker_version }}"
+          - "docker-ce-cli{{ '' if docker_version == None else '-' + docker_version }}"
           - containerd.io
 
     - name: start docker-ce service
