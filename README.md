@@ -7,7 +7,7 @@ ansibleで作って学ぶ ITインフラの基本
 ### System
 
 - [sys_auditd_config.yml](sys_auditd_config.yml) - 監査ログを設定
-- [sys_env_check.yml](sys_env_check.yml) - システム設定の確認(hostname, local, timezone, ntp)
+- [sys_env_check.yml](sys_env_check.yml) - システム設定の確認(hostname, locale, timezone, ntp)
 - [sys_firewalld_config.yml](sys_firewalld_config.yml) - firewalldの設定(ssh, http, https)
 - [sys_hosts_config.yml](sys_hosts_config.yml) - hostsファイルの設定
 - [sys_package_update.yml](sys_package_update.yml) - インストール済みpackageの更新
