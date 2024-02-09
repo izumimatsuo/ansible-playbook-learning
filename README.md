@@ -9,7 +9,7 @@ ansibleで作って学ぶ ITインフラの基本
 - [sys_auditd_config.yml](sys_auditd_config.yml) - 監査ログを設定
 - [sys_env_check.yml](sys_env_check.yml) - システム設定の確認(hostname, locale, timezone, ntp)
 - [sys_firewalld_config.yml](sys_firewalld_config.yml) - firewalldの設定(ssh, http, https)
-- [sys_hosts_config.yml](sys_hosts_config.yml) - hostsファイルの設定
+- [sys_hosts_config.yml](sys_hosts_config.yml) - /etc/hostsファイルの設定
 - [sys_package_update.yml](sys_package_update.yml) - インストール済みpackageの更新
 - [sys_selinux_enforce.yml](sys_selinux_enforce.yml) - selinuxの有効化
 - [sys_selinux_permissive.yml](sys_selinux_permissive.yml) - selinuxの無効化
@@ -29,14 +29,14 @@ ansibleで作って学ぶ ITインフラの基本
 
 - [docker_cluster.yml](docker_cluster.yml) - Appサーバークラスタを構築(docker-swarm)
 - [docker_install.yml](docker_install.yml) - docker-ceのインストール
-- [docker_swarm_config.yml](docker_swarm_config.yml) - クラスタ化の設定
+- [docker_swarm_config.yml](docker_swarm_config.yml) - クラスタ化の設定(docker-swarm)
 - [test_docker_cluster.yml](test_docker_cluster.yml) - Appサーバークラスタのフェイルオーバーテスト
 
 ### Postgresql
 
-- [postgresql_cluster.yml](postgresql_cluster.yml) - DBサーバークラスタを構築(postgresql)
+- [postgresql_cluster.yml](postgresql_cluster.yml) - DBサーバークラスタを構築(postgresql, repmgr)
 - [postgresql_install.yml](postgresql_install.yml) - postgresqlのインストール
-- [postgresql_replication_config.yml](postgresql_replication_config.yml) - クラスタツール(repmgr)のインストールとstreamingレプリケーションの設定
+- [postgresql_replication_config.yml](postgresql_replication_config.yml) - クラスタツールのインストールとstreamingレプリケーションの設定(repmgr)
 
 ### Web application site
 
