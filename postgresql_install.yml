@@ -49,25 +49,29 @@
           ansible.builtin.command:
             cmd: dnf -y module disable postgresql
 
+    - name: set major version as fact
+      ansible.builtin.set_fact:
+        pgsql_major_version: "{{ pgsql_version.split('.')[0] }}"
+
     - name: install postgresql package
       ansible.builtin.yum:
-        name: "postgresql{{ pgsql_version.split('.')[0] }}-server{{ '' if '.' not in pgsql_version else '-' + pgsql_version }}"
+        name: "postgresql{{ pgsql_major_version }}-server{{ '' if '.' not in pgsql_version else '-' + pgsql_version }}"
 
     - name: initialize database cluster
       ansible.builtin.command:
-        cmd: "postgresql-{{ pgsql_version.split('.')[0] }}-setup initdb"
-        creates: "/var/lib/pgsql/{{ pgsql_version.split('.')[0] }}/data/PG_VERSION"
+        cmd: "postgresql-{{ pgsql_major_version }}-setup initdb"
+        creates: "/var/lib/pgsql/{{ pgsql_major_version }}/data/PG_VERSION"
 
     - name: start postgresql service
       ansible.builtin.service:
-        name: "postgresql-{{ pgsql_version.split('.')[0] }}.service"
+        name: "postgresql-{{ pgsql_major_version }}.service"
         state: started
         enabled: true
 
   post_tasks:
     - name: verify installed postgresql package
       ansible.builtin.shell:
-        cmd: set -o pipefail; yum list installed | grep postgresql{{ pgsql_version.split('.')[0] }}-server\\.
+        cmd: set -o pipefail; yum list installed | grep postgresql{{ pgsql_major_version }}-server\\.
       changed_when: false
       register: result
       failed_when: result.rc != 0
@@ -78,7 +82,7 @@
 
     - name: verify started postgresql
       ansible.builtin.service:
-        name: "postgresql-{{ pgsql_version.split('.')[0] }}.service"
+        name: "postgresql-{{ pgsql_major_version }}.service"
         state: started
         enabled: true
       check_mode: true
