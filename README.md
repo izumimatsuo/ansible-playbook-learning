@@ -80,3 +80,7 @@ ansibleで作って学ぶ ITインフラの基本
 - [opt_alertmanager_container_deploy.yml](opt_alertmanager_container_deploy.yml) - アラート通知ミドルのインストール
 - [opt_node_exporter_install.yml](opt_node_exporter_install.yml) - メトリクス収集エージェントのインストール
 - [opt_prometheus_container_deploy.yml](opt_prometheus_container_deploy.yml) - メトリクス監視ミドルのインストール
+
+#### - orchestration
+- [opt_consul_install.yml](opt_consul_install.yml) - オーケストレーションツールのインストール
+- [opt_consul_template_install.yml](opt_consul_template_install.yml) - テンプレートツールのインストール
