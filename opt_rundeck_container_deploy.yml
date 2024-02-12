@@ -5,8 +5,9 @@
   gather_facts: false
 
   vars:
+    rundeck_use_mailcatcher: true
     rundeck_grails_url: "http://192.168.56.11:4440"
-    rundeck_container_image: "rundeck/rundeck:SNAPSHOT"
+    rundeck_container_image: "rundeck/rundeck"
     postgresql_container_image: "postgres"
 
   pre_tasks:
@@ -43,13 +44,34 @@
           args:
             creates: /usr/bin/pip
 
+    - name: get latest release
+      when: rundeck_container_image == "rundeck/rundeck"
+      delegate_to: localhost
+      run_once: true
+      become: false
+      block:
+        - name: get rundeck latest version
+          ansible.builtin.uri:
+            url: "https://api.github.com/repos/rundeck/rundeck/releases/latest"
+            method: GET
+            return_content: true
+            status_code: 200
+            body_format: json
+          register: latest_release
+          until: latest_release.status == 200
+          retries: 5
+
+        - name: set rundeck version to '{{ latest_release.json.tag_name[1:] }}'
+          ansible.builtin.set_fact:
+            rundeck_container_image: "{{ rundeck_container_image }}:{{ latest_release.json.tag_name[1:] }}"
+
+  tasks:
     - name: install docker python package
       ansible.builtin.pip:
         name:
           - docker
           - docker-compose
 
-  tasks:
     - name: create conf directory
       ansible.builtin.file:
         path: /etc/rundeck
@@ -92,13 +114,15 @@
                 POSTGRES_DB: rundeck
               volumes:
                 - rundeck_database:/var/lib/postgresql/data
+            {% if rundeck_use_mailcatcher %}
 
-                  #            mail:
-                  #              image: schickling/mailcatcher
-                  #              container_name: mail
-                  #              ports:
-                  #                - 1025:1025
-                  #                - 1080:1080
+            mail:
+              image: schickling/mailcatcher
+              container_name: mail
+              ports:
+                - 1025:1025
+                - 1080:1080
+            {% endif %}
 
           volumes:
             rundeck_database:
