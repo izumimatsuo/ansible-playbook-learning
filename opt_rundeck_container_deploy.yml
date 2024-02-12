@@ -6,7 +6,7 @@
 
   vars:
     rundeck_use_mailcatcher: true
-    rundeck_grails_url: "http://192.168.56.11:4440"
+    rundeck_grails_url: "http://127.0.0.1:4440"
     rundeck_container_image: "rundeck/rundeck"
     postgresql_container_image: "postgres"
 
