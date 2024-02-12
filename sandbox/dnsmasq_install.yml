@@ -1,18 +1,21 @@
 ---
-- name: consul dns configration
+- name: dnsmasq setup
   hosts: all
   become: true
   gather_facts: false
 
   vars:
-    dns_upstream:
-      - nameserver 8.8.8.8
-      - nameserver 8.8.4.4
+    dns_upstream: []
+      #    dns_upstream:
+      #      - 8.8.8.8
+      #      - 8.8.4.4
 
   tasks:
     - name: install dnsmasq package
       ansible.builtin.yum:
-        name: dnsmasq, bind-utils
+        name:
+          - dnsmasq
+          - bind-utils
 
     - name: start dnsmasq service
       ansible.builtin.service:
@@ -23,8 +26,7 @@
     - name: update dnsmasq conf
       ansible.builtin.lineinfile:
         path: /etc/dnsmasq.conf
-        regexp: "^{{ item }} "
-        insertafter: "^#{{ item }} "
+        regexp: "^#{{ item }}"
         line: "{{ item }}"
         backup: true
       loop:
@@ -49,13 +51,21 @@
         line: "dns=none"
         backup: true
 
+    - name: get default nameserver
+      when: (dns_upstream | length) == 0
+      ansible.builtin.shell:
+        cmd: grep -v 'nameserver 127.0.0.1' /etc/resolv.conf | grep nameserver
+      changed_when: false
+      register: result
+
     - name: update resolv.conf
       ansible.builtin.copy:
         dest: /etc/resolv.conf
         content: |
           nameserver 127.0.0.1
+          {% if result.stdout is defined %}{{ result.stdout }}{% endif %}
           {% for item in dns_upstream -%}
-          {{ item }}
+          nameserver {{ item }}
           {% endfor %}
         backup: true
         mode: "0644"
@@ -83,7 +93,7 @@
 
     - name: verify lookup dns entory
       ansible.builtin.shell:
-        cmd: dig {{ inventory_hostname }}.node.consul | grep "^{{ inventory_hostname }}.node.consul"
+        cmd: dig {{ inventory_hostname }} | grep "^{{ inventory_hostname }}"
       changed_when: false
       register: result
       failed_when: result.rc != 0
