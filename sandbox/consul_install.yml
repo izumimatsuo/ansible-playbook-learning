@@ -31,7 +31,9 @@
 
     - name: install consul package
       ansible.builtin.yum:
-        name: consul
+        name:
+          - consul
+          - jq
 
     - name: update consul hcl
       ansible.builtin.blockinfile:
