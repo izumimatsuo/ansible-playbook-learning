@@ -52,14 +52,14 @@
           enable_local_script_checks = true
       notify: restart consul service
 
-    - name: patch consul service unit
+    - name: patch consul service unit (1)
       ansible.builtin.lineinfile:
         path: /usr/lib/systemd/system/consul.service
         regexp: "^Type=notify"
         line: "Type=simple"
         backup: true
 
-    - name: patch consul service unit
+    - name: patch consul service unit (2)
       ansible.builtin.lineinfile:
         path: /usr/lib/systemd/system/consul.service
         regexp: "^ExecStartPre="
@@ -80,7 +80,7 @@
   post_tasks:
     - name: verify installed consul package
       ansible.builtin.shell:
-        cmd: set -o pipefail; yum list installed | grep consul\.
+        cmd: set -o pipefail; yum list installed | grep consul\\.
       changed_when: false
       register: result
       failed_when: result.rc != 0

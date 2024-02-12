@@ -7,6 +7,14 @@
   vars:
 
   tasks:
+    - name: create conf directory
+      ansible.builtin.file:
+        path: /etc/consul-template.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0744'
+
     - name: add Hashicorp repository
       ansible.builtin.yum_repository:
         name: Hashicorp-Stable
@@ -19,19 +27,38 @@
       ansible.builtin.yum:
         name: consul-template
 
-          #    - name: start consul-template service
-          #      ansible.builtin.service:
-          #        name: consul-template.service
-          #        state: started
-          #        enabled: true
+    - name: copy consul-template service file
+      ansible.builtin.copy:
+        backup: true
+        dest: /etc/systemd/system/consul-template.service
+        content: |
+          [Unit]
+          Description=consul-template
+          Requires=network-online.target
+          After=network-online.target consul.service vault.service
 
-          #    - name: copy consul-template conf
-          #      ansible.builtin.copy:
-          #        dest: 
-          #        content: |
-          #
-          #        mode: "0644"
-          #      notify: restart consul-template service
+          [Service]
+          EnvironmentFile=-/etc/sysconfig/consul-template
+          Restart=on-failure
+          ExecStart=/usr/bin/consul-template $OPTIONS -config=/etc/consul-template.d
+          ExecReload=/bin/kill -HUP $MAINPID
+          KillSignal=SIGINT
+
+          [Install]
+          WantedBy=multi-user.target
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: daemon-reload
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: start consul-template service
+      ansible.builtin.service:
+        name: consul-template.service
+        state: started
+        enabled: true
 
   post_tasks:
     - name: verify installed consul-template package
@@ -45,14 +72,14 @@
       ansible.builtin.debug:
         var: result.stdout
 
-          #    - name: verify started consul-template service
-          #      ansible.builtin.service:
-          #        name: consul-template.service
-          #        state: started
-          #        enabled: true
-          #      check_mode: true
-          #      register: result
-          #      failed_when: result.changed
+    - name: verify started consul-template service
+      ansible.builtin.service:
+        name: consul-template.service
+        state: started
+        enabled: true
+      check_mode: true
+      register: result
+      failed_when: result.changed
 
   handlers:
     - name: restart consul-template service

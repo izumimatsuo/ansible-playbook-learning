@@ -1,0 +1,55 @@
+---
+- name: consul-template sample
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: template
+      ansible.builtin.copy:
+        dest: /home/vagrant/sample.tpl
+        content: |
+          {% raw -%}
+          # node_exporter
+          - labels:
+              port: 9100
+            targets:{{range nodes}}
+              - {{.Address}}#{{.Node}}{{end}}
+          {% endraw %}
+        backup: true
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart consul-template service
+
+    - name: conf
+      ansible.builtin.copy:
+        dest: /etc/consul-template.d/sample.conf
+        content: |
+          template {
+            source = "/home/vagrant/sample.tpl"
+            destination = "/home/vagrant/sample.yml"
+          }
+        backup: true
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart consul-template service
+
+  post_tasks:
+    - name: verify destination file
+      ansible.builtin.command:
+        cmd: cat /home/vagrant/sample.yml
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print content
+      ansible.builtin.debug:
+        var: result.stdout_lines
+
+  handlers:
+    - name: restart consul-template service
+      service:
+        name: consul-template.service
+        state: restarted
