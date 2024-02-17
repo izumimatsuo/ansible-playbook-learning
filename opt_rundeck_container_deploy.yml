@@ -102,6 +102,8 @@
                 RUNDECK_MAIL_FROM: notifier@mail.example.com
               volumes:
                 - ${RUNDECK_LICENSE_FILE:-/dev/null}:/home/rundeck/etc/rundeckpro-license.key
+              networks:
+                - automation
               ports:
                 - 4440:4440
 
@@ -112,6 +114,8 @@
                 POSTGRES_USER: rundeck
                 POSTGRES_PASSWORD: rundeck
                 POSTGRES_DB: rundeck
+              networks:
+                - automation
               volumes:
                 - rundeck_database:/var/lib/postgresql/data
             {% if rundeck_use_mailcatcher %}
@@ -119,6 +123,8 @@
             mail:
               image: schickling/mailcatcher
               container_name: mail
+              networks:
+                - automation
               ports:
                 - 1025:1025
                 - 1080:1080
@@ -126,10 +132,19 @@
 
           volumes:
             rundeck_database:
+
+          networks:
+            automation:
+              name: management_net
+              external: true
         owner: root
         group: root
         mode: "0644"
       notify: restart containers
+
+    - name: create network
+      community.docker.docker_network:
+        name: management_net
 
     - name: start containers
       community.docker.docker_compose:

@@ -127,12 +127,16 @@
 
           networks:
             monitoring:
-              name: prometheus_monitoring
+              name: management_net
               external: true
         owner: root
         group: root
         mode: "0644"
       notify: restart containers
+
+    - name: create network
+      community.docker.docker_network:
+        name: management_net
 
     - name: start containers
       community.docker.docker_compose:
