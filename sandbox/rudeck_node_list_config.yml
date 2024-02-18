@@ -1,0 +1,62 @@
+---
+- name: rundeck node config
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    sys_net_dev: "eth1"
+    rundeck_target_hosts: "{{ ansible_play_hosts | sort }}"
+    rundeck_target_project: "sample"
+    rundeck_target_username: "vagrant"
+    rundeck_target_ssh_key_name_is_nodename: true
+
+  tasks:
+    - name: get ip address
+      ansible.builtin.shell:
+        cmd: "ip address show dev {{ sys_net_dev }} | grep -oP '(?<=inet )\\S+(?=/)'"
+      changed_when: false
+      register: result
+
+    - name: ip address as fact
+      ansible.builtin.set_fact:
+        ipv4_address: "{{ result.stdout }}"
+
+    - name: check targeets directory
+      ansible.builtin.stat:
+        path: /etc/rundeck/targets
+      register: targets
+
+    - name: update targets list
+      when: targets.stat.exists
+      ansible.builtin.copy:
+        dest: /etc/rundeck/targets/node_list.yml
+        content: |
+          {% for item in rundeck_target_hosts %}
+          - {{ item }}:
+            hostname: {{ hostvars[item].ipv4_address }}
+            nodename: {{ item }}
+            username: {{ rundeck_target_username }}
+            ssh-key-storage-path: keys/project/{{ rundeck_target_project }}/{% if rundeck_target_ssh_key_name_is_nodename %}
+          {{ item }}
+          {% else %}
+          {{ rundeck_target_username }}
+          {% endif %}
+          {% endfor %}
+        backup: true
+        owner: root
+        group: root
+        mode: "0644"
+
+  post_tasks:
+    - name: verifi output file
+      when: targets.stat.exists
+      ansible.builtin.command:
+        cmd: cat /etc/rundeck/targets/node_list.yml
+      changed_when: false
+      register: result
+      failed_when: result.rc != 0
+
+    - name: print output
+      ansible.builtin.debug:
+        var: result.stdout_lines
