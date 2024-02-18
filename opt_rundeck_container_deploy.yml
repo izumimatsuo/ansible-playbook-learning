@@ -102,6 +102,7 @@
                 RUNDECK_MAIL_FROM: notifier@mail.example.com
               volumes:
                 - ${RUNDECK_LICENSE_FILE:-/dev/null}:/home/rundeck/etc/rundeckpro-license.key
+                - /etc/rundeck/targets:/home/rundeck/targets
               networks:
                 - automation
               ports:
