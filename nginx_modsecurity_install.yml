@@ -147,7 +147,7 @@
     - name: edit nginx conf (load modsecurity module)
       ansible.builtin.lineinfile:
         path: /etc/nginx/nginx.conf
-        insertafter: '^worker_processes'
+        insertbefore: BOF
         line: "load_module modules/ngx_http_modsecurity_module.so;"
         backup: true
         validate: '/usr/sbin/nginx -t -c %s'
