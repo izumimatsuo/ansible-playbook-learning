@@ -1,0 +1,38 @@
+---
+- name: nginx modsecurity change to detection-only mode
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+
+  tasks:
+    - name: edit modsecurity config
+      ansible.builtin.lineinfile:
+        path: /etc/nginx/modsecurity/modsecurity.conf
+        regexp: "^{{ item.split(' ')[0] }} "
+        insertafter: "^#{{ item.split(' ')[0] }} "
+        line: "{{ item }}"
+        backup: true
+      loop:
+        - SecRuleEngine DetectionOnly
+        - SecAuditEngine RelevantOnly
+        - SecAuditLog /var/log/nginx/modsec_audit.log
+      notify: restart nginx service
+
+  post_tasks:
+    - name: verify access (200) to uri 'http://localhost'
+      ansible.builtin.uri:
+        url: "http://localhost"
+        status_code: 200
+
+    - name: verify access (200) to uri 'http://localhost/?union+select'
+      ansible.builtin.uri:
+        url: "http://localhost/?union+select"
+        status_code: 200
+
+  handlers:
+    - name: restart nginx service
+      ansible.builtin.service:
+        name: nginx
+        state: restarted

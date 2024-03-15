@@ -121,8 +121,8 @@
         line: "{{ item }}"
         backup: true
       loop:
-        - SecRuleEngine On # On/Off/DetectionOnly
-        - SecAuditLog /var/log/nginx/modsec_audit.log
+        - SecRuleEngine On
+        - SecAuditEngine Off
       notify: restart nginx service
 
     - name: copy modsecurity rules file
