@@ -24,6 +24,11 @@
       ansible.builtin.debug:
         var: nginx_version
 
+    - name: install selinux packages
+      ansible.builtin.yum:
+        name:
+          - setroubleshoot-server
+
   tasks:
     - name: check modsecurity installed
       ansible.builtin.stat:
@@ -112,6 +117,15 @@
           - curl-devel
           - openssl-devel
         state: removed
+
+    - name: set selinux boolean
+      when: ansible_connection not in ["container", "docker", "community.docker.docker"]
+      ansible.posix.seboolean:
+        name: "{{ item }}"
+        state: true
+        persistent: true
+      loop:
+        - httpd_execmem
 
     - name: edit modsecurity config
       ansible.builtin.lineinfile:
